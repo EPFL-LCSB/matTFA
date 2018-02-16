@@ -1,6 +1,10 @@
 matTFA
 =======
 
+Requirements
+------------
+
+You will need to have `Git-LFS <https://git-lfs.github.com/>`_ in order to properly download .mat files.
 
 License
 =======
