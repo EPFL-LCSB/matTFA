@@ -93,7 +93,7 @@ title('FVA difference after constraints on bidirectional reactions')
 
 % Add thermo_disp as variables
 tmp = prepped_m;
-tmp = convToTFA(prepped_m,ReactionDB,[],'DGo', min_obj, [], 1);
+tmp = convToTFA(prepped_m,ReactionDB,[],'DGo', [], min_obj, [], 1);
 gamma_model = addNetFluxVariables(tmp);
 
 lngamma = soltFA.x(getAllVar(gamma_model,{'LnGamma'}));
