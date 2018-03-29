@@ -1,4 +1,4 @@
-function cplex = changeToCPLEX_WithOptions(model,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay)
+function cplex = changeToCPLEX_WithOptions(model,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay,CPXPARAMdisp)
 % takes a tFBA model and changes it into a the MATLAB cplex class. This
 % function has several default options that we use in the LCSB lab, but
 % they can also be adjusted by the input.
@@ -55,8 +55,16 @@ cplex.Model.ub    = model.var_ub;
 cplex.Model.ctype = vtypes;
 cplex.Model.rhs = rhs;
 cplex.Model.lhs = lhs;
-cplex.Model.colname = char(model.varNames);
-cplex.Model.rowname = char(model.constraintNames);
+
+if isfield(model,'Q')
+    cplex.Model.Q = model.Q;
+end
+if isfield(model,'varNames')
+    cplex.Model.colname = char(model.varNames);
+end
+if isfield(model,'constraintNames')
+    cplex.Model.rowname = char(model.constraintNames);
+end
 
 % |======================================================|
 % |% % % % % % % % % % % % % % % % % % % % % % % % % % % |
@@ -235,5 +243,92 @@ else
     end
 end
 cplex.Param.mip.display.Cur = mipDisplay;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%        |----------------| 
+%        | SCREEN OUTPUT  |
+%        |----------------| 
+% This parameters allows to turn on/off the output to the screen
+% |-----------------------------------------------------------------------|
+% | Values :                                                              |
+% |-----------------------------------------------------------------------|
+% |                                                                       |
+% |-----------------------------------------------------------------------|
+% |0    Turn off display, LCSB default                                    |
+% |1    Display standard, CPLEX default                                   |
+% |-----------------------------------------------------------------------|
+
+if ~exist('CPXPARAMdisp','var') || isempty(CPXPARAMdisp)
+    % LCSB default
+    CPXPARAMdisp = 0;
+else
+    if ~ismember(CPXPARAMdisp,[0 1])
+        error('Parameter value out of range!')
+    end
+end
+if CPXPARAMdisp == 0
+    CPXPARAMdisp = [];
+else
+    CPXPARAMdisp = @disp;
+end
+cplex.DisplayFunc = CPXPARAMdisp;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %        |----------| 
+% %        | PRESOLVE |
+% %        |----------| 
+% % Presolve makes changes to the model prior to optimization, a reverse 
+% % operation (uncrush) occurs at termination to restore the full model with 
+% % its solution. With default settings, the simplex optimizers will perform 
+% % a final basis factorization on the full model before terminating.
+% % |-----------------------------------------------------------------------|
+% % | Values :                                                              |
+% % |-----------------------------------------------------------------------|
+% % |                                                                       |
+% % |-----------------------------------------------------------------------|
+% % |-1  Automatic (default)                                                |
+% % | 0  Turn off presolve                                                  |
+% % | 1  Turn on presolve                                                   |
+% % |-----------------------------------------------------------------------|
+% % "On" might report:
+% % "Integer feasible solution rejected --- infeasible on original model"
+% if ~exist('PreInd','var') || isempty(PreInd)
+%     % LCSB default
+%     PreInd = -1;
+% else
+%     if ~ismember(PreInd,[-1 1])
+%         error('Parameter value out of range!')
+%     end
+% end
+% cplex.Param.preprocessing.presolve.Cur = PreInd;
+% 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %        |----------------------------| 
+% %        | PRESOLVE - CONSERVE MEMORY |
+% %        |----------------------------| 
+% % Conserve memory means that the final factorization after uncrushing will 
+% % be skipped; on large models this can save some time, but computations 
+% % that require a factorized basis after optimization (for example the 
+% % computation of the condition number Kappa) may be unavailable depending 
+% % on the operations presolve performed 
+% % |-----------------------------------------------------------------------|
+% % | Values :                                                              |
+% % |-----------------------------------------------------------------------|
+% % |                                                                       |
+% % |-----------------------------------------------------------------------|
+% % | 0  Off; do not conserve memory; default                               |
+% % | 1  On; conserve memory where possible                                 |
+% % |-----------------------------------------------------------------------|
+% % "Off" might report:
+% % "Integer feasible solution rejected --- infeasible on original model"
+% if ~exist('SaveMem','var') || isempty(SaveMem)
+%     % LCSB default
+%     SaveMem = 0;
+% else
+%     if ~ismember(SaveMem,[0 1])
+%         error('Parameter value out of range!')
+%     end
+% end
+% cplex.Param.emphasis.memory.Cur = SaveMem;
 %<<<<<<<<<<<<<< EDITED BY GF %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
