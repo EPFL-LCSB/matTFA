@@ -52,8 +52,8 @@ tmp = convToTFA(prepped_m,ReactionDB,[],'DGo', min_obj);
 this_tmodel = addNetFluxVariables(tmp);
 
 %% Solve tFA
-
-soltFA = solveTFAmodel(this_tmodel);
+save tutorial_01.mat
+soltFA = solveTFBAmodelCplex(this_tmodel);
 
 %% Perform FVA 
 
@@ -64,9 +64,9 @@ fva = runMinMax(this_tmodel);
 % Get the variables representing the net fluxes
 NF_ix = getAllVar(this_tmodel,{'NF'});
 tva = runTMinMax(this_tmodel, this_tmodel.varNames(NF_ix));
+save tutorial_02.mat
 
 %% Plot the difference
-%%
 f = @(x) abs(x(:,2) - x(:,1));
 m = @(x) abs(x(:,2) + x(:,1))/2;
 n = @(x) (x(:,2) .* x(:,1)) < 0;
@@ -92,13 +92,40 @@ title('FVA difference after constraints on bidirectional reactions')
 %% Get Thermodynamic displacements
 
 % Add thermo_disp as variables
-tmp = prepped_m;
-tmp = convToTFA(prepped_m,ReactionDB,[],'DGo', min_obj, [], 1);
-gamma_model = addNetFluxVariables(tmp);
+basalFlux = 1e-6;
+gamma_model = convToTFA(prepped_m, ReactionDB, [], 'DGo', min_obj, [], 1, true);
+gamma_model = addNetFluxVariables(gamma_model);
+gamma_model = addMinFluxRequirements(gamma_model, basalFlux, [], [], false);
 
-lngamma = soltFA.x(getAllVar(gamma_model,{'LnGamma'}));
-
+solTFA = solveTFAmodelCplex(gamma_model);
+NFids = getAllVar(gamma_model,{'NF'});
+LnGammaids = getAllVar(gamma_model,{'LnGamma'});
+lngammaValues = solTFA.x(getAllVar(gamma_model,{'LnGammaids'}));
+save tutorial_03.mat
 
 %% Sampling
-basalFluxValue = 1e-6;
-sampled_model = sampleDP(gamma_model, soltFA, 1, [], tva, basalFluxValue)
+% basalFluxValue = 1e-6;
+% sampled_model = sampleDPforMCA(gamma_model, soltFA, 1, [], tva, basalFluxValue)
+
+% Set the directionalities of the FBA model According to the solution
+% obtained by the TFA model.
+gamma_model = addTFASolBoundsToFBAmodel(gamma_model, solTFA.x, NFids);
+
+
+
+% Settings of the sampler (COBRA)
+soloptions.nWarmupPoints = 500;
+soloptions.nFiles = 1;
+soloptions.nPointsPerFile = 5000;
+soloptions.nStepsPerPoint = 100;
+soloptions.nPointsReturned = 5000;
+soloptions.NvZeroTolerance = 1e-8;
+soloptions.nFilesSkipped = 0;
+soloptions.removeLoopsFlag = false;
+soloptions.removeLoopSamplesFlag = true;
+
+% Sample Fluxes
+
+
+
+
