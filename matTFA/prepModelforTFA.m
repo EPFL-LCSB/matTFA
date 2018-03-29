@@ -5,18 +5,20 @@ function modeloutput = prepModelforTFBA(model, ReactionDB, CompartmentData, repl
 % - computes the Gibbs energies of reactions
 %
 % INPUTS:
-% i) model - COBRA toolbox metabolic model structure
-% ii) ReactionDB - ReactionDB database with all the compounds and reactions
-% data
-% iii) CompartmentData - structure storing the compartmental pH,
-% ionic strength, membrane potential, etc.
+%   model - COBRA toolbox metabolic model structure
+%   ReactionDB - ReactionDB database with all the compounds and reactions
+%       data
+%   CompartmentData - structure storing the compartmental pH,
+%       ionic strength, membrane potential, etc.
+%   replaceData - Use metabolite names from the ReactionDB
+%   verboseFlag - change verbosity
+%   writeToFileFlag - write LP to file
 %
 % OUTPUT:
-% modeloutput - processed COBRA toolbox model ready to be converted to TFBA
-% model
+%   modeloutput - processed COBRA toolbox model ready to be converted to TFBA
+%       model
 % 
-% things to add: Summary report of the number of compounds and reactions
-% with thermodynamic data
+
 
 %% settings
 

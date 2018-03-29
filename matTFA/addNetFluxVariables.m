@@ -1,5 +1,13 @@
 function model = addNetFluxVariables(model)
 % adds NetFluxes variables to the model and their associated constraints
+%
+% The variables will be prefixed with "NF_"
+%
+% INPUTS:
+% - model: a TFA-ready model (has the .A matrix) with no NF_ variables
+%
+% OUTPUTS
+% - model: a TFA-readay model with NF_ variables
 
 [num_mets num_rxns] = size(model.S);
 [num_constraints,num_vars] = size(model.A);

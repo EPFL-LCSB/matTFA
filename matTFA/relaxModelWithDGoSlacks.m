@@ -13,17 +13,18 @@ function [model, relaxedDGoVarsValues, modelwDGoSlackVars] = relaxModelWithDGoSl
 % - model: TFA model
 % - minObjSolVal: minimum lower bound of the objective (that is maximized)
 %   that the desired solution should satisfy
-% - rxnNameListNoDGoRelax
+% - rxnNameListNoDGoRelax: Reactions whose DeltaG should not undergo relaxation
+%
 % OUTPUTS:
 %
 % - model: output TFA model with relaxed DGo values that allow feasibility
-% - modelwDGoSlackVars: TFA model that contains the DGo slack variables for
-%   further analysis
 % - relaxedDGoVarsValues: cell table with four columns. In the 1st column
 %   are all the reaction DGo values that needed to be relaxed to obtain this
 %   solution. In the columns 2-3 are their corresponding lower-upper bounds
 %   before relaxation, and in columns 4-5 the lower-upper bounds after
 %   relaxation.
+% - modelwDGoSlackVars: TFA model that contains the DGo slack variables for
+%   further analysis
 %
 % Georgios Fengos 12 April 2017
 

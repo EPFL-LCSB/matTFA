@@ -1,4 +1,18 @@
-function sol = solveTFBAmodelCplex(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay)
+function sol = solveTFAmodelCplex(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay,CPXPARAMdisp)
+% Solve a model using specific solver settings. More details in
+% changeToCPLEX_WithOptions
+%
+% INPUTS
+%   tModel: a TFA-ready model (has a .A matrix)
+%   TimeInSec: timelimit for the solver. 
+%   manualScalingFactor: manual scaling factor for the solver
+%   mipTolInt: Integer tolerance of the solver
+%   emphPar: Solver emphasis (trade-offs between speed, feasibility, 
+%       optimality, and moving bounds in MIP - see https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.6.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/MIPEmphasis.html)
+%   feasTol: solver tolerance for feasibility (error on constraints)
+%   mipDisplay: verbosity of the MIP info display
+%   CPXPARAMdisp: Turn on/off the cplex problem setup display
+% 
 %% Changelog
 % 2017/04/26 - Modified by Pierre on Georgios Fengos's base, to incorporate
 % Vikash's Gurobi hooks in a more global fashion, in a similar way COBRA
@@ -37,6 +51,9 @@ end
 if ~exist('mipDisplay','var') || isempty(mipDisplay)
     mipDisplay = [];
 end
+if ~exist('CPXPARAMdisp','var') || isempty(CPXPARAMdisp)
+    CPXPARAMdisp = [];
+end
 
 switch solver
     %% Case CPLEX
@@ -44,7 +61,7 @@ switch solver
         if isempty(which('cplex.p'))
             error('You need to add CPLEX to the Matlab-path!!')
         end
-        sol = x_solveCplex(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay);
+        sol = x_solveCplex(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay,CPXPARAMdisp);
     %% Case GUROBI
     case 'gurobi_direct'
         if isempty(which('gurobi'))
@@ -55,7 +72,7 @@ end
 end
 
 %% Private function for CPLEX solve
-function sol = x_solveCplex(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay)
+function sol = x_solveCplex(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay,CPXPARAMdisp)
 
 % this function solves a TFBA problem using CPLEX
 
@@ -65,7 +82,7 @@ if isempty(which('cplex.m'))
 end
 
 % Convert problem to cplex
-cplex = changeToCPLEX_WithOptions(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay);
+cplex = changeToCPLEX_WithOptions(tModel,TimeInSec,manualScalingFactor,mipTolInt,emphPar,feasTol,scalPar,mipDisplay,CPXPARAMdisp);
 
 % Optimize the problem
 try
