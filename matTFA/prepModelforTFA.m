@@ -389,6 +389,15 @@ for i=1:num_rxns
     
     met_indices=find(modeloutput.S(:,i));
     stoich = modeloutput.S(met_indices,i);
+    % NOTE: then you also need to update reactants becaus eit might be that
+    % a stoichiometry drops to 0. same with all the rest.
+    reactants = modeloutput.mets(met_indices);
+    reactantIDs = modeloutput.metSEEDID(met_indices);
+    metCompartments = modeloutput.metCompSymbol(met_indices);
+    reactantDeltaGFstd = modeloutput.metDeltaGFtr(met_indices);
+    metCharge = modeloutput.metCharge(met_indices);
+    metFormula = modeloutput.metFormulas(met_indices);
+
     
     if ~NotDrain || ~isempty(find(reactantDeltaGFstd > 0.9E+07)) || ~(length(reactants) < 100) || strcmp(modeloutput.rxnMapResult{i,1},'missing atoms') || strcmp(modeloutput.rxnMapResult{i,1},'drain flux')
         
