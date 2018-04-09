@@ -1,8 +1,8 @@
 function ret = load_cplex()
 %% Edit this with your actual CPLEX path
-%addpath(genpath('C:\Program Files\IBM\ILOG\CPLEX_Studio127\cplex\matlab'));
-
+% cplexPath = 'C:\Program Files\IBM\ILOG\CPLEX_Studio1271\cplex\matlab\x64_win64';
 cplexPath = [];
+
 while isempty(cplexPath)
     cplexPath = input('Please provide your cplex path\n','s');
 end
