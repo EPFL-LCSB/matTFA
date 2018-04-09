@@ -1,4 +1,4 @@
-function [model, relaxedDGoVarsValues, modelwDGoSlackVars] = convToTFA(model, ReactionDB, rxnNameListNoThermo, flagInfeasibility, rxnNameListNoDGoRelax, minObjSolVal, flagToAddPotentials, flagToAddLnThermoDisp, verboseFlag, printLP)
+function [model, relaxedDGoVarsValues, modelwDGoSlackVars] = convToTFA(model, ReactionDB, rxnNameListNoThermo, flagInfeasibility, rxnNameListNoDGoRelax, minObjSolVal, flagToAddPotentials, flagToAddLnThermoDisp, verboseFlag, printLP, flagMCA_FarEquilibrium)
 % converts a model into a TFA ready model by adding the
 % thermodynamic constraints required
 %
@@ -33,7 +33,9 @@ function [model, relaxedDGoVarsValues, modelwDGoSlackVars] = convToTFA(model, Re
 %   constraint or not (default:false)
 % - verboseFlag: prints out information about the generation of constraints
 % - printLP: prints out the LP formulation
-%
+% - flagMCA_FarEquilibrium: flag to add Gamma constraints for MCA to ensure
+%   we have no zero displacement reactions
+
 % OUTPUTS
 % - model: TFA model with all the new variables and constraints added. If
 %   the generated TFA mdoel is infeasible and we have enabled the flag to
@@ -92,17 +94,17 @@ if strcmp(model.thermo_units,'kJ/mol')
     error('Not implemented yet!')
 else
     GAS_CONSTANT = 1.9858775/1000; % Kcal/(K mol)
-    % value for the bigM in THermo constraints. This will also be the bound value
-    bigMtherm = 1000;
-    DGR_lb = -bigMtherm; %kcal/mol
-    DGR_ub =  bigMtherm; %kcal/mol
 end
 TEMPERATURE = 298.15; % K
 RT = GAS_CONSTANT*TEMPERATURE;
 
 % value for the bigM in big M constraints such as:
 % UF_rxn: F_rxn - M*FU_rxn < 0
-bigM = 1000;
+bigM = 1e3;
+bigMtherm = 1e3;
+DGR_lb = -bigMtherm; %kcal/mol
+DGR_ub =  bigMtherm; %kcal/mol
+
 if any((model.lb < -bigM) | (model.ub > bigM))
     error('flux bounds too wide or big M not big enough')
 end
@@ -145,6 +147,12 @@ end
 if ~exist('flagToAddLnThermoDisp','var') || isempty(flagToAddLnThermoDisp)
     flagToAddLnThermoDisp = false;
 end
+
+if ~exist('flagMCA_FarEquilibrium','var') || isempty(flagMCA_FarEquilibrium)
+    flagMCA_FarEquilibrium = false;
+end
+
+
 
 if exist('rxnNameListNoThermo','var') && ~isempty(rxnNameListNoThermo)
     % Before going through all the reactions to add thermodynamic information,
@@ -408,21 +416,6 @@ for i = 1:num_rxns;
                 end
             end
         end
-
-        
-        %%% FIX : Make sure that if the same LC_ variable is in two		        % add the delta G naught as a variable
-        %%% expressions, the coefficient in LC_ChemMet does not override		        RxnDGoRerror  = model.rxnDeltaGRerr(i);
-        %%% the other      -- TPXP, 2017-07-01		        model = addNewVariableInTFA(model, strcat('DGo_', model.rxns{i}),'C', DGo + [-RxnDGoRerror RxnDGoRerror]);
-        
-        commonLC = intersect(LC_TransMet_indexes, LC_ChemMet_indexes);		        DGo_index = size(model.varNames,1);
-        if (size(commonLC,1) > 0)
-            for j=1:size(commonLC,2)
-                Tmet_ind = find(LC_TransMet_indexes == commonLC(j));
-                Cmet_ind = find(LC_ChemMet_indexes == commonLC(j));
-                LC_ChemMet_Coeffs(Cmet_ind) = LC_ChemMet_Coeffs(Cmet_ind) + LC_TransMet_Coeffs(Tmet_ind);
-                LC_TransMet_Coeffs(Tmet_ind) = 0;
-            end
-        end
         
         model = addNewVariableInTFA(model, strcat('DG_', model.rxns{i}), 'C', [DGR_lb DGR_ub]);
         DG_index = size(model.varNames,1);
@@ -438,31 +431,6 @@ for i = 1:num_rxns;
         CLHS.varCoeffs = [-1         1          LC_TransMet_Coeffs   LC_ChemMet_Coeffs];
         model = addNewConstraintInTFA(model, strcat('G_', model.rxns{i}), '=', CLHS, 0);
         
-        % Below we add to the model a variable for the log of the thermodynamic displacement (Gamma)
-        %
-        % Gamma = (1/Keq)*(C_Prod1^StoichCoeffProd1 * ...)/(C_Sub1^StoichCoeffSub1 * ... )
-        % Keq   = exp(-DGnaught/RT)
-        %
-        % Combining the two equations above, formulate the constraint:
-        % LnGamma: ln(Gamma) + StoichCoefSubs1 * LCsubs1 + StoichCoefSubs2 * LCsubs2 + ...
-        %                    - StoichCoefProd1 * LCprod1 - StoichCoefProd2 * LCprod2 - ...
-        %                    - (1/RT)*DGo_Rxn = 0
-        % NOTE1: The formulation above should be exactly equivalent to:
-        % ln(Gamma) - (1/RT)*DG_rxn = 0
-        % BUT, the reason why the formulation above is not 100% equivalent
-        % to the initial formulation is due to the DG of the transport
-        % fluxes that is not added explicitly, but only through the DG.
-        % Therefore We adopt the latter formulation, that is also simpler.
-        
-        if flagToAddLnThermoDisp == 1
-            model = addNewVariableInTFA(model,strcat('LnGamma_',model.rxns{i}),'C',[-1000 1000]);
-            LnGamma_index = size(model.varNames,1);
-
-            CLHS.varIDs    = [LnGamma_index     DG_index];
-            CLHS.varCoeffs = [1                 -1/RT ];
-
-            model = addNewConstraintInTFA(model, strcat('ThermoDisp_', model.rxns{i}), '=', CLHS, 0);
-        end
         
         % create the use variables constraints and connect them to the
         % deltaG if the reaction has thermo constraints
@@ -508,6 +476,56 @@ for i = 1:num_rxns;
         CLHS.varCoeffs = [+1            -bigM   ];
         model = addNewConstraintInTFA(model, strcat('UR_', model.rxns{i}),'<', CLHS, 0);
         
+        
+        
+        % Below we add to the model a variable for the log of the thermodynamic displacement (Gamma)
+        %
+        % Gamma = (1/Keq)*(C_Prod1^StoichCoeffProd1 * ...)/(C_Sub1^StoichCoeffSub1 * ... )
+        % Keq   = exp(-DGnaught/RT)
+        %
+        % Combining the two equations above, formulate the constraint:
+        % LnGamma: ln(Gamma) + StoichCoefSubs1 * LCsubs1 + StoichCoefSubs2 * LCsubs2 + ...
+        %                    - StoichCoefProd1 * LCprod1 - StoichCoefProd2 * LCprod2 - ...
+        %                    - (1/RT)*DGo_Rxn = 0
+        % NOTE1: The formulation above should be exactly equivalent to:
+        % ln(Gamma) - (1/RT)*DG_rxn = 0
+        % BUT, the reason why the formulation above is not 100% equivalent
+        % to the initial formulation is due to the DG of the transport
+        % fluxes that is not added explicitly, but only through the DG.
+        % Therefore We adopt the latter formulation, that is also simpler.
+        
+        if flagToAddLnThermoDisp == 1
+            model = addNewVariableInTFA(model,strcat('LnGamma_',model.rxns{i}),'C',[-10000 10000]);
+            LnGamma_index = size(model.varNames,1);
+            
+            CLHS.varIDs    = [LnGamma_index     DG_index];
+            CLHS.varCoeffs = [1                 -1/RT ];
+            model = addNewConstraintInTFA(model, strcat('ThermoDisp_', model.rxns{i}), '=', CLHS, 0);
+            
+            % Here we add MCA constraints on LnGamma_ so that we ensure a
+            % rection is not at equilibrium ie. Gamma ~= 1 !!!
+            % We add the following constraints:
+            % FU_ThermoDisp_: ln(Gamma) + 1000*FU_ <  1000 + Epsilon1
+            % BU_ThermoDisp_: ln(Gamma) - 1000*BU_ > -1000 + Epsilon2
+            if flagMCA_FarEquilibrium == 1
+                % We want to bound Gamma to be below 0.99 for the forward
+                % reaction and it should be above corresponding 1.0101 for
+                % the backward reaction (1/0.99=1.0101). REmember we are
+                % binding the log of gamma so we take the log of the
+                % thermodynamic displacements.
+                Epsilon1 = log(0.99);
+                Epsilon2 = log(1.0101);
+                
+                CLHS.varIDs    = [LnGamma_index     FU_index];
+                CLHS.varCoeffs = [1                 10000    ];
+                model = addNewConstraintInTFA(model, strcat('FUThermoDisp_', model.rxns{i}), '<', CLHS, 10000 + Epsilon1);
+                
+                CLHS.varIDs    = [LnGamma_index     BU_index];
+                CLHS.varCoeffs = [1                 -10000   ];
+                model = addNewConstraintInTFA(model, strcat('BUThermoDisp_', model.rxns{i}), '>', CLHS, -10000 + Epsilon2);
+            end
+        end
+        
         % (2) For all other reactions:
     else
         % We DON'T add thermodynamic constraints! We only add constraints
@@ -535,6 +553,9 @@ for i = 1:num_rxns;
         model = addNewConstraintInTFA(model, strcat('UR_', model.rxns{i}), '<', CLHS, 0);
         
     end
+    
+    
+    
     % creating the objective
     model.f = zeros(size(model.A,2),1);
     % if objective not found return error message

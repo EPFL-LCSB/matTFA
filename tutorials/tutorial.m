@@ -92,7 +92,10 @@ title('FVA difference after constraints on bidirectional reactions')
 %% Get Thermodynamic displacements
 
 % Add thermo_disp as variables
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
 basalFlux = 1e-6;
 gamma_model = convToTFA(prepped_m, ReactionDB, [], 'DGo', min_obj, [], 1, true);
 gamma_model = addNetFluxVariables(gamma_model);
