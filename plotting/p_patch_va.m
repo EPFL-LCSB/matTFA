@@ -20,7 +20,7 @@ for k = 1:size(minmax,1)
                 x_center+x_offset top];
     faces = [1 2 3 4];
     
-    p = patch('Faces',faces,'Vertices',vertices,'FaceColor',color,'EdgeColor',color)
+    p = patch('Faces',faces,'Vertices',vertices,'FaceColor',color,'EdgeColor',color);
     
     x_center = x_center + 1;
     
