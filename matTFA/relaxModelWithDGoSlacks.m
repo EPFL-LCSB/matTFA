@@ -123,7 +123,7 @@ if isempty(solTFA.x) || solTFA.val<minObjSolVal
     DGoSlackVars = modelwDGoSlackVars.varNames(DGS_vi(solTFAwDGoSlacks.x(DGS_vi) ~= 0));
     fprintf('The slack variables that need to be non-zero, are:\n')
     fprintf('%s\n', DGoSlackVars{:})
-    DGoSlackValues = solTFAwDGoSlacks.x(ismember(modelwDGoSlackVars.varNames, DGoSlackVars) ~= 0);
+    DGoSlackValues = solTFAwDGoSlacks.x(find_cell(DGoSlackVars, modelwDGoSlackVars.varNames));
     % Go to each of the DG-constraints that need to be relaxed, and
     % find by how many sigmas this constraint need to be relaced
     rxnNamesToBeRelaxed = regexprep(DGoSlackVars, '(^DGNegSlack_)|(^DGPosSlack_)', '');
