@@ -1,4 +1,4 @@
-function modeloutput = prepModelforTFBA(model, ReactionDB, CompartmentData, replaceData, verboseFlag, writeToFileFlag)
+function modeloutput = prepModelforTFA(model, ReactionDB, CompartmentData, replaceData, verboseFlag, writeToFileFlag)
 % prepares a COBRA toolbox model for TFBA analysis by doing the following:
 % - checks if a reaction is a transport reaction
 % - checks the ReactionDB for Gibbs energies of formation of metabolites
