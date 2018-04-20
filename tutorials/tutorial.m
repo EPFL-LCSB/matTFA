@@ -169,7 +169,7 @@ tva_gamma_model = runTMinMax(gamma_model, gamma_model.varNames(NF_ix_gamma_model
 % Solve the model and get the ln(gamma) values for this solution
 solTFA = solveTFAmodelCplex(gamma_model);
 LnGammaids = getAllVar(gamma_model,{'LnGamma'});
-lngammaValues = solTFA.x(getAllVar(gamma_model,{'LnGammaids'}));
+lngammaValues = solTFA.x(LnGammaids);
 
 %% Sampling
 % Sampling fluxes & concentrations
