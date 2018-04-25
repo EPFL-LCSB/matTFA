@@ -4,7 +4,7 @@ function ret = load_cplex()
 cplexPath = [];
 
 while isempty(cplexPath)
-    cplexPath = input('Please provide your cplex path\n','s');
+    cplexPath = input('Please provide your cplex path and press enter\n... ','s');
 end
 
 addpath(genpath(cplexPath))
