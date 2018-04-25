@@ -22,57 +22,81 @@ addpath(genpath(fullfile('..','plotting')))
 % changeCobraSolver('ibm_cplex')
 changeCobraSolver('cplex_direct')
 
-% tmp = load(fullfile('..','models','small_ecoli.mat'));
-% mymodel = tmp.model_red;
-tmp = load(fullfile('..','models','smallEcoli.mat'));
-mymodel = tmp.smallEcoli;
+%% Load the model
+modelChoice = [];
+while isempty(modelChoice)
+    modelChoice = input('Would you like to run the tutorial for the\n-(1) reduced genome scale model (rGEM)\n-(2) genome scale model (GEM)\nPlease type 1 or 2 and press enter\n... ','s');
+end
+% Choose between a reduced genome scale model and the genome scale ecoli
+% (Orth 2011)
+if strcmp(modelChoice, '1')
+    tmp = load(fullfile('..','models','smallEcoli.mat'));
+    mymodel = tmp.smallEcoli;
+elseif strcmp(modelChoice, '2')
+    tmp = load(fullfile('..','models','GSmodel_Ecoli.mat'));
+    mymodel = tmp.ttmodel;
+end
 clear tmp
 
+% Limit the bounds of the fluxes that are higher than 100 or lower than
+% -100 mmol/(gDW * h)
+if any(mymodel.lb<-100) || any(mymodel.ub>100)
+    mymodel.lb(mymodel.lb<-100) = -100;
+    mymodel.ub(mymodel.ub>+100) = +100;
+end
+
+%% Load the thermodynamics database
 tmp = load('thermo_data.mat');
 ReactionDB = tmp.DB_AlbertyUpdate;
 clear tmp
 
-% %Fix big stoichiometries
-% [~,is_big_stoich] = find(sum(mymodel.S,1) > 100);
-% mymodel.S(:,is_big_stoich) = 1/10 * mymodel.S(:,is_big_stoich);
-
 
 %% Test simple fba
 solFBA = optimizeCbModel(mymodel);
+% We can set a lower bound for growth (e.g. 50% of maximal growth)
+min_obj = roundsd(0.5*solFBA.f, 2, 'floor');
+mymodel.lb(mymodel.c==1) = min_obj;
+
+%% Perform FVA 
+fva = runMinMax(mymodel);
+
+% Are there any blocked reactions?
+% solver tolerance is 1e-9
+SolTol = 1e-9;
+id_Blocked_in_FBA = find( (fva(:,1)>-SolTol & fva(:,1)<SolTol) & ...
+                          (fva(:,2)>-SolTol & fva(:,2)<SolTol) );
+% If there exist block reactions
+while ~isempty(id_Blocked_in_FBA)
+    % remove them
+    mymodel = removeRxns(mymodel, mymodel.rxns(id_Blocked_in_FBA));
+    fva = runMinMax(mymodel);
+    id_Blocked_in_FBA = find( (fva(:,1)>-SolTol & fva(:,1)<SolTol) & ...
+                              (fva(:,2)>-SolTol & fva(:,2)<SolTol) );
+end
 
 %% Prepare for TFA
-
 %need field for description
-prepped_m = prepModelforTFA(mymodel,ReactionDB,mymodel.CompartmentData);
+prepped_m = prepModelforTFA(mymodel, ReactionDB, mymodel.CompartmentData);
 
 %% Convert to TFA
-% min_obj = solFBA.f*0.95;
-% tmp = convToTFA(prepped_m,ReactionDB,[],'DGo', [], min_obj);
-tmp = convToTFA(prepped_m,ReactionDB,[],'DGo');
+tmp = convToTFA(prepped_m, ReactionDB, [], 'DGo', [], min_obj);
 
-% add net flux variables, which are equal to forwards flux - backwards flux
+% Add net flux variables, which are equal to forwards flux - backwards flux
 % NF_rxn = F_rxn - B_rxn
 this_tmodel = addNetFluxVariables(tmp);
 
 %% Solve tFA
-save tutorial_01.mat
 soltFA = solveTFAmodelCplex(this_tmodel);
 
-%% Perform FVA 
-
-fva = runMinMax(this_tmodel);
-
 %% Perform TVA
-
 % Get the variables representing the net fluxes
 NF_ix = getAllVar(this_tmodel,{'NF'});
 tva = runTMinMax(this_tmodel, this_tmodel.varNames(NF_ix));
-save tutorial_02.mat
 
 %% We add some generic data for cofactor concentrations
 metNames = {'adp_c', 'amp_c', 'atp_c'};
-C_lb = [4e-04, 2e-04, 1e-03]';
-C_ub = [7e-04, 3e-04, 1e-02]';
+C_lb = [1e-06, 2e-04, 1e-03]';
+C_ub = [7e-04, 3e-04, 5e-02]';
 LC_varNames = {'LC_adp_c', 'LC_amp_c', 'LC_atp_c'};
 % find the indices of these variables in the variable names of the tfa
 id_LC_varNames = find_cell(LC_varNames, this_tmodel.varNames);
@@ -81,8 +105,6 @@ this_tmodel.var_lb(id_LC_varNames) = log(C_lb);
 this_tmodel.var_ub(id_LC_varNames) = log(C_ub);
 % Run another tva with the data
 tva_wData = runTMinMax(this_tmodel, this_tmodel.varNames(NF_ix));
-
-save tutorial_03.mat
 
 %% Plot the differences
 % Inline function definitions to get:
@@ -98,9 +120,6 @@ s = @(x,y) ( abs(f(x)-f(y))./f(x) ) .* (f(x) > 10);
 loss = s(fva, tva);
 % - tva witout and with concentration data
 loss_tva_wData = s(tva, tva_wData);
-
-% % find bidirectional reactions based on fva
-% is_bd = (n(fva));
 
 % find bidirectional reactions based on
 % - (1) fva
@@ -158,18 +177,16 @@ title('Impact of thermodynamic constraints and data on network flux ranges','fon
 %% Get Thermodynamic displacements
 
 % Add thermo_disp as variables
-basalFlux = 1e-7;
 flagToAddLnThermoDisp = true;
-gamma_model = convToTFA(prepped_m, ReactionDB, [], 'DGo', [], [], [], flagToAddLnThermoDisp);
+gamma_model = convToTFA(prepped_m, ReactionDB, [], 'DGo', [], min_obj, [], flagToAddLnThermoDisp);
 gamma_model = addNetFluxVariables(gamma_model);
-% Get the indices of the net-flux variables
 NF_ix_gamma_model = getAllVar(gamma_model,{'NF'});
-% Run again tva for the net fluxes in the model including the gamma variable
 tva_gamma_model = runTMinMax(gamma_model, gamma_model.varNames(NF_ix_gamma_model));
-% Solve the model and get the ln(gamma) values for this solution
+
+% Extract the values of the lnGamma
 solTFA = solveTFAmodelCplex(gamma_model);
 LnGammaids = getAllVar(gamma_model,{'LnGamma'});
-lngammaValues = solTFA.x(LnGammaids);
+lngammaValues = solTFA.x(getAllVar(gamma_model,{'LnGammaids'}));
 
 %% Sampling
 % Sampling fluxes & concentrations
@@ -180,12 +197,19 @@ lngammaValues = solTFA.x(LnGammaids);
 
 % We check if our model has bi-directional reactions
 id_BD = find(tva_gamma_model(:,1)<-1e-9 & tva_gamma_model(:,2)>1e-9);
+% Define a minimum flux value
+minFluxValue = 1e-6;
 if ~isempty(id_BD)
     % if there exist bi-directional reactions for which we have no further
     % information, we need to eliminate them. One way to select a set of
     % directionalities is to just set them sequentially.
-    model_fixed_d = assignReactionDirectionalities(gamma_model); 
+    % Assign a minimal lower bound to growth
+    gamma_model.var_lb(gamma_model.f==1) = minFluxValue;
+    model_fixed_d = assignReactionDirectionalities_1(gamma_model, minFluxValue, min_obj, ReactionDB);
 end
+
+% Get the optimal FBA growth
+solFBA = solveFBAmodelCplex(model_fixed_d);
 
 % Settings of the sampler (COBRA)
 soloptions.nWarmupPoints = 500;
@@ -202,8 +226,6 @@ soloptions.removeLoopSamplesFlag = true;
 [modelSamplingFluxes, FluxSamples] = sampleCbModel_LCSB(model_fixed_d, 'FBA_model_samples', soloptions);
 
 % Sample Concentrations
-solFBA = solveFBAmodelCplex(model_fixed_d);
-% Prepare the model for concentration sampling
 model_fixed_d_Conc = prepModelForConcSampling(model_fixed_d, solFBA.x);
 model_fixed_d_Conc.A = [];
 model_fixed_d_Conc = rmfield(model_fixed_d_Conc,'A');
