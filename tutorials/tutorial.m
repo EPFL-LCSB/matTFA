@@ -205,7 +205,7 @@ if ~isempty(id_BD)
     % directionalities is to just set them sequentially.
     % Assign a minimal lower bound to growth
     gamma_model.var_lb(gamma_model.f==1) = minFluxValue;
-    model_fixed_d = assignReactionDirectionalities_1(gamma_model, minFluxValue, min_obj, ReactionDB);
+    model_fixed_d = assignReactionDirectionalities(gamma_model, minFluxValue, min_obj, ReactionDB);
 end
 
 % Get the optimal FBA growth
