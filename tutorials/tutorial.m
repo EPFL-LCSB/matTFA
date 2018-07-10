@@ -141,14 +141,14 @@ id_rxns_to_plot = [criterion1; criterion2];
 xlabels = this_tmodel.rxns(id_rxns_to_plot);
 figure
 hold on
-p1 = p_patch_va(fva(id_rxns_to_plot,:),0.3,[20 43 140]./255);
-p2 = p_patch_va(tva(id_rxns_to_plot,:),0.2,[222 125 0]./255);
-p3 = p_patch_va(tva_wData(id_rxns_to_plot,:),0.11,[5 5 5]./255);
+p1 = p_patch_va(fva(id_rxns_to_plot,:),0,[34 29 35]./255, 0.2);
+p2 = p_patch_va(tva(id_rxns_to_plot,:),0.20,[61 90 128]./255, 0.2);
+p3 = p_patch_va(tva_wData(id_rxns_to_plot,:),0.4,[152 193 217]./255, 0.2);
 plot([0 size(id_rxns_to_plot,1)+1],[0 0],'k--','linewidth',2)
 set(gca,'XTick',1:size(id_rxns_to_plot,1),'XTickLabel',xlabels,'XTickLabelRotation',-45,'TickLabelInterpreter','none')
 legend([p1 p2 p3] , 'FBA', 'TFA & default conc. ranges','TFA & conc. data','Location','southwest')
 ylabel ('flux [mmol.gDw^{-1}]')
-title('Bi-directional reactions become uniirectional upon imposing thermodynamic constraints and data','fontsize',20)
+title('Bi-directional reactions become unidirectional upon imposing thermodynamic constraints and data')%,'fontsize',20)
 
 % To illustrate the impact of thermodynamics on the network we select to
 % plot also the ranges of reactions that are not necessarily bidirectional
@@ -165,9 +165,9 @@ id_rxns_to_plot = union(criterion3, criterion4);
 xlabels = this_tmodel.rxns(id_rxns_to_plot);
 figure
 hold on
-p1 = p_patch_va(fva(id_rxns_to_plot,:),0.3,[20 43 140]./255);
-p2 = p_patch_va(tva(id_rxns_to_plot,:),0.2,[222 125 0]./255);
-p3 = p_patch_va(tva_wData(id_rxns_to_plot,:),0.11,[5 5 5]./255);
+p1 = p_patch_va(fva(id_rxns_to_plot,:),0,[34 29 35]./255, 0.2);
+p2 = p_patch_va(tva(id_rxns_to_plot,:),0.20,[61 90 128]./255, 0.2);
+p3 = p_patch_va(tva_wData(id_rxns_to_plot,:),0.4,[152 193 217]./255, 0.2);
 plot([0 size(id_rxns_to_plot,1)+1],[0 0],'k--','linewidth',2)
 set(gca,'XTick',1:size(id_rxns_to_plot,1),'XTickLabel',xlabels,'XTickLabelRotation',-45,'TickLabelInterpreter','none')
 legend([p1 p2 p3] , 'FBA', 'TFA & default conc. ranges','TFA & conc. data','Location','southwest')
