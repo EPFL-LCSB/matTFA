@@ -403,6 +403,16 @@ for i = 1:num_rxns;
                     end
                 end
             end
+            % If a reaction has both chemical and reaction part,
+            % then exclude the zero chemical parts form the metabolites
+            % that have a transport part in the reaction.
+            if ~isempty(intersect(LC_ChemMet_indexes, LC_TransMet_indexes))
+                % These metabolites will have zero coefficients in the
+                % chemical part
+                id_zero_LC_ChemMet_Coeffs = find(LC_ChemMet_Coeffs==0);
+                LC_ChemMet_indexes(id_zero_LC_ChemMet_Coeffs) = [];
+                LC_ChemMet_Coeffs(id_zero_LC_ChemMet_Coeffs) = [];
+            end
         else
             % if it is just a regular chemical reaction, DG-naught is:
             DGo = model.rxnDeltaGR(i);
