@@ -74,7 +74,7 @@ RT = GAS_CONSTANT*TEMPERATURE;
         
         npKa = length(pKaList);
         
-        if ((npKa-num_iter+1) == 0)
+        if ((npKa-num_iter+1) <= 0)
             start = 1;
         else
             start = (npKa-num_iter+1);
@@ -82,7 +82,7 @@ RT = GAS_CONSTANT*TEMPERATURE;
         
         pKs = pKaList(start:npKa);
 
-        for j=1:length(pKs);
+        for j=1:length(pKs)
             pKs(j);
             sp_deltaGf_std = -RT*log(pH2conc(pKs(j))) + deltaGf_std;
             deltaGf_std = sp_deltaGf_std;
