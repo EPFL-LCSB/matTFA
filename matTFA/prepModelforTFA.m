@@ -5,20 +5,18 @@ function modeloutput = prepModelforTFA(model, ReactionDB, CompartmentData, repla
 % - computes the Gibbs energies of reactions
 %
 % INPUTS:
-%   model - COBRA toolbox metabolic model structure
-%   ReactionDB - ReactionDB database with all the compounds and reactions
-%       data
-%   CompartmentData - structure storing the compartmental pH,
-%       ionic strength, membrane potential, etc.
-%   replaceData - Use metabolite names from the ReactionDB
-%   verboseFlag - change verbosity
-%   writeToFileFlag - write LP to file
+% i) model - COBRA toolbox metabolic model structure
+% ii) ReactionDB - ReactionDB database with all the compounds and reactions
+% data
+% iii) CompartmentData - structure storing the compartmental pH,
+% ionic strength, membrane potential, etc.
 %
 % OUTPUT:
-%   modeloutput - processed COBRA toolbox model ready to be converted to TFBA
-%       model
+% i) modeloutput - processed COBRA toolbox model ready to be converted to TFBA
+% model
 % 
-
+% things to add: Summary report of the number of compounds and reactions
+% with thermodynamic data
 
 %% settings
 
@@ -67,7 +65,7 @@ else
 end
 TEMPERATURE = 298.15; % K
 
-if issparse(model.S);
+if issparse(model.S)
     model.S=full(model.S);
 end
 
@@ -150,7 +148,7 @@ modeloutput.metMass         = repmat(1E+07,num_mets,1);
 modeloutput.struct_cues     = repmat({[]},num_mets,1);
 
 for i=1:num_mets 
-
+    
    if ~strcmp(model.metSEEDID(i),DEFAULT_NULL)
        if verboseFlag
             fprintf('matching %i = %s\n',i,model.mets{i});
@@ -194,81 +192,28 @@ for i=1:num_mets
                modeloutput.metFormulas{i,1} = model.metFormulas{i};
            else
                modeloutput.metFormulas{i,1} = DEFAULT_NULL;
-           end
-
-       elseif ReactionDB.compound.deltaGf_std(cpdIndex) > 1E+07
-           modeloutput.metDeltaGFstd(i,1) = 1E+07;
-           modeloutput.metDeltaGFerr(i,1) = 1E+07;
-           modeloutput.metDeltaGFtr(i,1) = 1E+07;
-           modeloutput.metMass(i,1) = 1E+07;
-           modeloutput.metFormulas{i,1} = ...
-               ReactionDB.compound.Formula{cpdIndex};
-           modeloutput.struct_cues{i,1} = ...
-               ReactionDB.compound.struct_cues{cpdIndex};
-
+           end   
        else
 
            % transform the deltaG formation to pH and ionic strength
            % specified for the compartment
-           if isfield(model,'metSpecie')
-               % The model embeds species info
-               if model.metSpecie(i)
-                   % This species has info
-                   this_metDeltaGFtr, this_metSpRatio = ...
-                       calcDGspecie(model.metSEEDID(i),...
-                                    model.metCharge(i),...
-                                    model.metFormulas{i},...
-                                    comp_pH,...
-                                    comp_ionicStr,...
-                                    'GCM',...
-                                    ReactionDB);
-                   modeloutput.metDeltaGFtr(i,1) = this_metDeltaGFtr;
-                   modeloutput.metSpRatio(i,1) = this_metSpRatio;
-                   modeloutput.metDeltaGFstd(i,1) = ...
-                       ReactionDB.compound.deltaGf_std(cpdIndex);
-                   modeloutput.metDeltaGFerr(i,1) = ...
-                       ReactionDB.compound.deltaGf_err(cpdIndex);
-
-               else
-                   % This species has no info
-                   modeloutput.metSpRatio(i,1) = 1;
-                   modeloutput.metDeltaGFtr(i,1) = ...
-                       calcDGis(model.metSEEDID(i),...
-                                comp_pH,...
-                                comp_ionicStr,...
-                                'GCM',...
-                                ReactionDB);
-                   modeloutput.metDeltaGFstd(i,1) = ...
-                       ReactionDB.compound.deltaGf_std(cpdIndex);
-                   modeloutput.metDeltaGFerr(i,1) = ...
-                       ReactionDB.compound.deltaGf_err(cpdIndex);
-                   modeloutput.metCharge(i,1) = ...
-                       ReactionDB.compound.Charge_std(cpdIndex);
-                   modeloutput.metFormulas{i,1} = ...
-                       ReactionDB.compound.Formula{cpdIndex};
-                   modeloutput.metMass(i,1) = ...
-                       ReactionDB.compound.Mass_std(cpdIndex);
-
-               end
-           else
-               % The model has no species informations
-               modeloutput.metDeltaGFstd(i,1) = ...
-                   ReactionDB.compound.deltaGf_std(cpdIndex);
-               modeloutput.metDeltaGFerr(i,1) = ...
-                   ReactionDB.compound.deltaGf_err(cpdIndex);
-               modeloutput.metCharge(i,1) = ...
-                   ReactionDB.compound.Charge_std(cpdIndex);
-               modeloutput.metFormulas{i,1} = ...
-                   ReactionDB.compound.Formula{cpdIndex};
-               modeloutput.metMass(i,1) = ...
-                   ReactionDB.compound.Mass_std(cpdIndex);
-               modeloutput.metDeltaGFtr(i,1) = ...
-                   calcDGis(model.metSEEDID(i),...
-                            comp_pH,...
-                            comp_ionicStr,...
-                            'GCM',...
-                            ReactionDB);
-           end
+           
+           modeloutput.metDeltaGFstd(i,1) = ...
+               ReactionDB.compound.deltaGf_std(cpdIndex);
+           modeloutput.metDeltaGFerr(i,1) = ...
+               ReactionDB.compound.deltaGf_err(cpdIndex);
+           modeloutput.metCharge(i,1) = ...
+               ReactionDB.compound.Charge_std(cpdIndex);
+           modeloutput.metFormulas{i,1} = ...
+               ReactionDB.compound.Formula{cpdIndex};
+           modeloutput.metMass(i,1) = ...
+               ReactionDB.compound.Mass_std(cpdIndex);
+           modeloutput.metDeltaGFtr(i,1) = ...
+               calcDGis(model.metSEEDID(i),...
+                        comp_pH,...
+                        comp_ionicStr,...
+                        'GCM',...
+                        ReactionDB);
            modeloutput.struct_cues{i,1} =...
                     ReactionDB.compound.struct_cues{cpdIndex};
 
@@ -315,7 +260,7 @@ for i=1:num_mets
        else
            modeloutput.metFormulas{i,1} = DEFAULT_NULL;
        end
-       modeloutput.metCharge(i,1) = 1E+07;
+       modeloutput.metCharge(i,1) = 0;
        modeloutput.struct_cues{i,1} = DEFAULT_NULL;
    end
 end
@@ -343,11 +288,7 @@ for i=1:num_rxns
     if verboseFlag
         fprintf('processing %d out of %d: %s\n',i,num_rxns,model.rxns{i});
     end
-       
-%     if strcmp(model.rxns{i},'ARE1')
-%         keyboard
-%     end
-%     
+    
     % identifying the reactants
     DeltaGrxn = 0;
     DeltaGRerr = 0;
@@ -379,27 +320,8 @@ for i=1:num_rxns
     else
        modeloutput.rxnComp{i,1} = 'c';
     end
-% 
-%     if i==547
-%         keyboard
-%     end
-    [modeloutput,modeloutput.rxnMapResult{i,1}] = checkReactionBal(modeloutput,modeloutput.rxns(i),true);
-    
-    % NOTE: Since checkReactionBal might add protons, this changes the
-    % coefficients of our equations, so we have to update the values we
-    % stored ! -- TPXP, 2017-06-20
-    
-    met_indices=find(modeloutput.S(:,i));
-    stoich = modeloutput.S(met_indices,i);
-    % NOTE: then you also need to update reactants becaus eit might be that
-    % a stoichiometry drops to 0. same with all the rest.
-    reactants = modeloutput.mets(met_indices);
-    reactantIDs = modeloutput.metSEEDID(met_indices);
-    metCompartments = modeloutput.metCompSymbol(met_indices);
-    reactantDeltaGFstd = modeloutput.metDeltaGFtr(met_indices);
-    metCharge = modeloutput.metCharge(met_indices);
-    metFormula = modeloutput.metFormulas(met_indices);
 
+    [modeloutput,modeloutput.rxnMapResult{i,1}] = checkReactionBal(modeloutput,modeloutput.rxns(i),true);
     
     if ~NotDrain || ~isempty(find(reactantDeltaGFstd > 0.9E+07)) || ~(length(reactants) < 100) || strcmp(modeloutput.rxnMapResult{i,1},'missing atoms') || strcmp(modeloutput.rxnMapResult{i,1},'drain flux')
         
@@ -420,7 +342,6 @@ for i=1:num_rxns
         end
         
         modeloutput.rxnThermo(i) = 1;
-        
         if (modeloutput.isTrans(i))
             if isfield(model,'rxnSpecie')
                 if modeloutput.rxnSpecie(i)
@@ -442,10 +363,6 @@ for i=1:num_rxns
             for j=1:length(reactants)
 
                 metindex = find(ismember(modeloutput.mets,reactants{j,1}));
-
-                %if strcmp(model.rxns{i},'DGGH')
-                %    keyboard
-                %end
                 
                 if (~strcmp(modeloutput.metFormulas{metindex},'H'))               
                     DeltaGrxn = DeltaGrxn + stoich(j,1)*modeloutput.metDeltaGFtr(metindex,1);
@@ -464,7 +381,7 @@ for i=1:num_rxns
         end
         
         if (DeltaGRerr == 0)
-            DeltaGRerr = 2; % default value for DeltaGRerr
+            DeltaGRerr = 2.22;% default value for DeltaGRerr. Check Jankowski 2008!
         end
         
         
