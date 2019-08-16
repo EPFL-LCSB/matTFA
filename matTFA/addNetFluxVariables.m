@@ -1,97 +1,56 @@
 function model = addNetFluxVariables(model)
 % adds NetFluxes variables to the model and their associated constraints
-%
-% The variables will be prefixed with "NF_"
-%
-% INPUTS:
-% - model: a TFA-ready model (has the .A matrix) with no NF_ variables
-%
-% OUTPUTS
-% - model: a TFA-readay model with NF_ variables
 
 [num_mets num_rxns] = size(model.S);
+[num_constraints,org_num_vars] = size(model.A);
+
+% F_vi=getAllVar(model,{'F'});
+% R_vi=getAllVar(model,{'R'});
+
+model.A=[model.A zeros(num_constraints,num_rxns)];
 [num_constraints,num_vars] = size(model.A);
 
-% NF_rxn_i: F_rxn - R_rxn - NF_rxn = 0
-
-for i=1:num_constraints
-    temp = regexp(model.constraintNames(i),'_','split');
-    cons_prefix{i} = temp{1,1}{1};
-end
-
-mass_bal_cons = find(ismember(cons_prefix,'M'));
-orig_A = model.A;
+tmp_matrix=zeros(num_rxns,num_vars);
 
 for i=1:num_rxns
+    % Find the indices of F_x and R_x variables in the varNames for each
+    % reaction x
+    F_vi=find(ismember(model.varNames,strcat('F_',model.rxns{i})));
+    R_vi=find(ismember(model.varNames,strcat('R_',model.rxns{i})));
     
-    [num_constraints,num_vars] = size(model.A);
-    model.constraintNames{num_constraints+1,1} = strcat('NF_',model.rxns{i});
-    model.constraintType{num_constraints+1,1} = '=';
-    model.rhs(num_constraints+1) = 0;
-    
-    model.varNames{num_vars+1} = ['NF_' model.rxns{i}];
-    model.var_lb(num_vars+1) = -1000;
-    model.var_ub(num_vars+1) = 1000;
-    model.vartypes{num_vars+1} = 'C';
-    model.A(num_constraints+1,num_vars+1) = -1;
-    
-    F_varIndex = find(ismember(model.varNames,strcat('F_', model.rxns{i})));
-    R_varIndex = find(ismember(model.varNames,strcat('R_', model.rxns{i})));
-    
-    fprintf('replacing %s flux variables with net flux variable\n',model.rxns{i});
-    
-    if ~isempty(F_varIndex) && ~isempty(R_varIndex)
-        % first we remove the separate flux variables from the mass balance constraints and replace
-        % them with the net flux variable
-        
-        F_pos_indices = find(model.A(mass_bal_cons,F_varIndex) > 0);
-        F_neg_indices = find(model.A(mass_bal_cons,F_varIndex) < 0);
-        R_pos_indices = find(model.A(mass_bal_cons,R_varIndex) > 0);
-        R_neg_indices = find(model.A(mass_bal_cons,R_varIndex) < 0);
-        
-        model.A(F_pos_indices,F_varIndex) = 0;
-        model.A(F_neg_indices,F_varIndex) = 0;
-        model.A(R_pos_indices,R_varIndex) = 0;
-        model.A(R_neg_indices,R_varIndex) = 0;
-        
-        model.A(F_pos_indices,num_vars+1) = orig_A(F_pos_indices,F_varIndex);
-        model.A(F_neg_indices,num_vars+1) = orig_A(F_neg_indices,F_varIndex);
-        
-        model.A(num_constraints+1,F_varIndex) = 1;
-        model.A(num_constraints+1,R_varIndex) = -1;
-        
-    elseif isempty(F_varIndex)
-        R_pos_indices = find(model.A(mass_bal_cons,R_varIndex) > 0);
-        R_neg_indices = find(model.A(mass_bal_cons,R_varIndex) < 0);
-        
-        model.A(R_pos_indices,R_varIndex) = 0;
-        model.A(R_neg_indices,R_varIndex) = 0;
-        
-        model.A(R_pos_indices,num_vars+1) = orig_A(R_pos_indices,R_varIndex);
-        model.A(R_neg_indices,num_vars+1) = orig_A(R_neg_indices,R_varIndex);
-        
-        model.A(num_constraints+1,R_varIndex) = -1;
-    elseif isempty(R_varIndex)
-        F_pos_indices = find(model.A(mass_bal_cons,F_varIndex) > 0);
-        F_neg_indices = find(model.A(mass_bal_cons,F_varIndex) < 0);
-        
-        model.A(F_pos_indices,F_varIndex) = 0;
-        model.A(F_neg_indices,F_varIndex) = 0;
-        
-        model.A(F_pos_indices,num_vars+1) = orig_A(F_pos_indices,F_varIndex);
-        model.A(F_neg_indices,num_vars+1) = orig_A(F_neg_indices,F_varIndex);
-        
-        model.A(num_constraints+1,F_varIndex) = 1;              
+    % If there exist such F_x variable
+    if ~isempty(F_vi)
+        % Keep track of the this variable
+        tmp_matrix(i,F_vi)=1;
+        model.var_ub(org_num_vars+i)=100;
+    else
+        % Set the upper bound of one extra variable to zero
+        model.var_ub(org_num_vars+i)=0;
     end
     
+    % If there exist such R_x variable
+    if ~isempty(R_vi)
+        % Keep track of the this variable
+        tmp_matrix(i,R_vi)=-1;
+        model.var_lb(org_num_vars+i)=-100;
+    else
+        % Set the lower bound of one extra variable to zero
+        model.var_lb(org_num_vars+i)=0;
+    end
+    
+    tmp_matrix(i,org_num_vars+i)=-1;
+end
+
+model.A=[model.A;tmp_matrix];
+NF_varNames=strcat('NF_',model.rxns);
+
+model.varNames=[model.varNames;NF_varNames];
+model.constraintNames=[model.constraintNames;NF_varNames];
+model.rhs=[model.rhs;zeros(num_rxns,1)];
+model.constraintType=[model.constraintType;cellstr(repmat('=',num_rxns,1))];
+
+model.vartypes=[model.vartypes;cellstr(repmat('C',num_rxns,1))];
+model.f(length(model.f)+1:length(model.var_ub),1) = 0;
 
 end
 
-[num_constraints,num_vars] = size(model.A);
-model.f(num_vars,1) = 0;
-
-NF_vi=getAllVar(model,{'NF'});
-model.var_lb(NF_vi)=model.lb;
-model.var_ub(NF_vi)=model.ub;
-
-end
