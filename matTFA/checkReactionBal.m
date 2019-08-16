@@ -37,7 +37,7 @@ elseif length(mets) == length(stoich)
         
         met_formula = model.metFormulas(met_index);
         met_charge = model.metCharge(met_index);
-               
+        
         if isempty(met_formula) || isempty(met_charge)
         	error('metabolite charge or formula not found');
         end
@@ -46,7 +46,7 @@ elseif length(mets) == length(stoich)
             sum_charge_noH = sum_charge_noH + stoich(n)*met_charge;
         end
         
-        sum_charge = sum_charge + stoich(n)*met_charge(1);
+        sum_charge = sum_charge + stoich(n)*met_charge;
         
         [compounds, tok] = regexp(met_formula, '([A-Z][a-z]*)(\d*)', 'match', 'tokens');
         tok = tok{1,1};
@@ -121,7 +121,7 @@ elseif length(mets) == length(stoich)
     end
     
     bal = stoich'*Ematrix;
-    
+
     if isempty(find(bal)) && (sum_charge == 0)
         result = 'balanced';
     elseif (length(find(bal)) == 1)
@@ -152,21 +152,13 @@ elseif length(mets) == length(stoich)
                 result = 'missing atoms';
                 return
             elseif (addProtons)
-                % FIX: Correctly balance the equation -- TPXP, 2017-06-20
-                model.S(proton_index,rxn_index) = model.S(proton_index,rxn_index) - sum_charge;
                 if (sum_charge_noH > 0)
+                    model.S(proton_index,rxn_index) = -sum_charge_noH;
                     result = [int2str(sum_charge_noH) ' protons added to reactants'];
                 else
+                    model.S(proton_index,rxn_index) = -sum_charge_noH;
                     result = [int2str(-sum_charge_noH) ' protons added to products'];
                 end
-                
-                % FIX: The reaction can become a transport reaction, so
-                % update isTrans as well. -- TPXP, 2017-07-03
-
-                reactants = model.mets(find(model.S(:,rxn_index) < 0));
-                products = model.mets(find(model.S(:,rxn_index) > 0));
-                
-                model.isTrans(rxn_index,1) = checkIfRxnIsTransport(reactants,products);
             end
         else
             result = 'missing atoms';
