@@ -34,7 +34,7 @@ end
 
 num_vars=length(tModel.var_lb);
 tModel.f = zeros(num_vars,1);
-varList = find(ismember(tModel.varNames,variables));
+[~,varList] = ismember(variables,tModel.varNames);
 varNames = tModel.varNames;
 
 % initialization
