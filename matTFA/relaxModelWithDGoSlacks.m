@@ -120,7 +120,7 @@ if isempty(solTFA.x) || solTFA.val<minObjSolVal
     % alternative solutions exist? THIS PART REMAINS TO BE EXTENDED!!!
     
     % identify the slack variables that need to be non-zero
-    DGoSlackVars = modelwDGoSlackVars.varNames(DGS_vi(solTFAwDGoSlacks.x(DGS_vi) ~= 0));
+    DGoSlackVars = modelwDGoSlackVars.varNames(DGS_vi(solTFAwDGoSlacks.x(DGS_vi) > 1e-9));
     fprintf('The slack variables that need to be non-zero, are:\n')
     fprintf('%s\n', DGoSlackVars{:})
     DGoSlackValues = solTFAwDGoSlacks.x(find_cell(DGoSlackVars, modelwDGoSlackVars.varNames));
