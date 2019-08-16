@@ -35,7 +35,7 @@ function [model, relaxedDGoVarsValues, modelwDGoSlackVars] = convToTFA(model, Re
 % - printLP: prints out the LP formulation
 % - flagMCA_FarEquilibrium: flag to add Gamma constraints for MCA to ensure
 %   we have no zero displacement reactions
-
+%
 % OUTPUTS
 % - model: TFA model with all the new variables and constraints added. If
 %   the generated TFA mdoel is infeasible and we have enabled the flag to
@@ -94,17 +94,17 @@ if strcmp(model.thermo_units,'kJ/mol')
     error('Not implemented yet!')
 else
     GAS_CONSTANT = 1.9858775/1000; % Kcal/(K mol)
+    % value for the bigM in THermo constraints. This will also be the bound value
+    bigMtherm = 1e6;
+    DGR_lb = -bigMtherm; %kcal/mol
+    DGR_ub =  bigMtherm; %kcal/mol
 end
 TEMPERATURE = 298.15; % K
 RT = GAS_CONSTANT*TEMPERATURE;
 
 % value for the bigM in big M constraints such as:
 % UF_rxn: F_rxn - M*FU_rxn < 0
-bigM = 1e3;
-bigMtherm = 1e3;
-DGR_lb = -bigMtherm; %kcal/mol
-DGR_ub =  bigMtherm; %kcal/mol
-
+bigM = 1e6;
 if any((model.lb < -bigM) | (model.ub > bigM))
     error('flux bounds too wide or big M not big enough')
 end
@@ -403,16 +403,6 @@ for i = 1:num_rxns;
                     end
                 end
             end
-            % If a reaction has both chemical and reaction part,
-            % then exclude the zero chemical parts form the metabolites
-            % that have a transport part in the reaction.
-            if ~isempty(intersect(LC_ChemMet_indexes, LC_TransMet_indexes))
-                % These metabolites will have zero coefficients in the
-                % chemical part
-                id_zero_LC_ChemMet_Coeffs = find(LC_ChemMet_Coeffs==0);
-                LC_ChemMet_indexes(id_zero_LC_ChemMet_Coeffs) = [];
-                LC_ChemMet_Coeffs(id_zero_LC_ChemMet_Coeffs) = [];
-            end
         else
             % if it is just a regular chemical reaction, DG-naught is:
             DGo = model.rxnDeltaGR(i);
@@ -468,7 +458,7 @@ for i = 1:num_rxns;
         if (model.rxnThermo(i) == 1)
             CLHS.varIDs    = [DG_index   BU_index ];
             CLHS.varCoeffs = [-1         bigMtherm];
-            model = addNewConstraintInTFA(model, strcat('BU_', model.rxns{i}),'<', CLHS, bigMtherm + epsilon);
+            model = addNewConstraintInTFA(model, strcat('BU_', model.rxns{i}),'<', CLHS, bigMtherm - epsilon);
         end
         % create the prevent simultaneous use constraints
         % U_rxn: FU_rxn + BU_rxn <= 1
@@ -505,7 +495,7 @@ for i = 1:num_rxns;
         % Therefore We adopt the latter formulation, that is also simpler.
         
         if flagToAddLnThermoDisp == 1
-            model = addNewVariableInTFA(model,strcat('LnGamma_',model.rxns{i}),'C',[-10000 10000]);
+            model = addNewVariableInTFA(model,strcat('LnGamma_',model.rxns{i}),'C',[-100000 100000]);
             LnGamma_index = size(model.varNames,1);
             
             CLHS.varIDs    = [LnGamma_index     DG_index];
@@ -523,19 +513,19 @@ for i = 1:num_rxns;
                 % the backward reaction (1/0.99=1.0101). REmember we are
                 % binding the log of gamma so we take the log of the
                 % thermodynamic displacements.
-                Epsilon1 = log(0.99);
-                Epsilon2 = log(1.0101);
+                Epsilon1=log(0.999); 
+                Epsilon2=log(1.00101);
                 
                 CLHS.varIDs    = [LnGamma_index     FU_index];
-                CLHS.varCoeffs = [1                 10000    ];
-                model = addNewConstraintInTFA(model, strcat('FUThermoDisp_', model.rxns{i}), '<', CLHS, 10000 + Epsilon1);
+                CLHS.varCoeffs = [1                 100000    ];
+                model = addNewConstraintInTFA(model, strcat('FUThermoDisp_', model.rxns{i}), '<', CLHS, 100000 + Epsilon1);
                 
                 CLHS.varIDs    = [LnGamma_index     BU_index];
-                CLHS.varCoeffs = [1                 -10000   ];
-                model = addNewConstraintInTFA(model, strcat('BUThermoDisp_', model.rxns{i}), '>', CLHS, -10000 + Epsilon2);
+                CLHS.varCoeffs = [1                 -100000   ];
+                model = addNewConstraintInTFA(model, strcat('BUThermoDisp_', model.rxns{i}), '>', CLHS, -100000 + Epsilon2);
             end
         end
-        
+ 
         % (2) For all other reactions:
     else
         % We DON'T add thermodynamic constraints! We only add constraints
@@ -564,16 +554,6 @@ for i = 1:num_rxns;
         
     end
     
-    
-    
-    % creating the objective
-    model.f = zeros(size(model.A,2),1);
-    % if objective not found return error message
-    if ~isempty(find(ismember(model.varNames,objective)))
-        model.f(find(ismember(model.varNames,objective))) = 1;
-    else
-        disp('Objective not found');
-    end
 end
 
 % CONSISTENCY CHECKS
