@@ -17,7 +17,7 @@ function y=roundsd(x,n,method)
 %	See also Matlab's functions ROUND, ROUND10, FLOOR, CEIL, FIX, and 
 %	ROUNDN (Mapping Toolbox).
 %
-%	Author: Fran?ois Beauducel <beauducel@ipgp.fr>
+%	Author: FranÁois Beauducel <beauducel@ipgp.fr>
 %	  Institut de Physique du Globe de Paris
 %
 %	Acknowledgments: Edward Zechmann, Daniel Armyr, Yuri Kotliarov
@@ -25,7 +25,7 @@ function y=roundsd(x,n,method)
 %	Created: 2009-01-16
 %	Updated: 2015-04-03
 
-%	Copyright (c) 2015, Fran?ois Beauducel, covered by BSD License.
+%	Copyright (c) 2015, FranÁois Beauducel, covered by BSD License.
 %	All rights reserved.
 %
 %	Redistribution and use in source and binary forms, with or without 
@@ -71,9 +71,9 @@ opt = {'round','floor','ceil','fix'};
 if nargin < 3
 	method = opt{1};
 else
-	if ~ischar(method) || ~ismember(method, opt)
-		error('METHOD argument is invalid.')
-	end
+% 	if ~ischar(method) || ~ismember(opt,method)
+% 		error('METHOD argument is invalid.')
+% 	end
 end
 
 % --- the generic formula was:
