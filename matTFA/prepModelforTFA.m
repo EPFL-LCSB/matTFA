@@ -184,7 +184,11 @@ for i=1:num_mets
            modeloutput.metDeltaGFstd(i,1) = 1E+07;
            modeloutput.metDeltaGFerr(i,1) = 1E+07;
            modeloutput.metDeltaGFtr(i,1) = 1E+07;
-           modeloutput.metCharge(i,1) = 0;
+           if isfield(model,'metCharge') && ~isempty(model.metCharge(i)) && ~isnan(model.metCharge(i))
+               modeloutput.metCharge(i,1) = model.metCharge(i);
+           else
+               modeloutput.metCharge(i,1) = 0;
+           end
            modeloutput.metMass(i,1) = 1E+07;
            modeloutput.struct_cues{i,1} = {[]};
            
@@ -260,7 +264,11 @@ for i=1:num_mets
        else
            modeloutput.metFormulas{i,1} = DEFAULT_NULL;
        end
-       modeloutput.metCharge(i,1) = 0;
+       if isfield(model,'metCharge') && ~isempty(model.metCharge(i)) && ~isnan(model.metCharge(i))
+           modeloutput.metCharge(i,1) = model.metCharge(i);
+       else
+           modeloutput.metCharge(i,1) = 0;
+       end
        modeloutput.struct_cues{i,1} = DEFAULT_NULL;
    end
 end
