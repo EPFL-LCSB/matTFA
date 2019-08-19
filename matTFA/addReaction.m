@@ -250,13 +250,13 @@ end
 
 % if ~oldRxnFlag, model.rxnGeneMat(rxnID,:)=0; end
 
-% if (isfield(model,'genes'))
-%     if (nargin < 11)
-%         model = changeGeneAssociation(model,rxnName,grRule);
-%     else
-%         model = changeGeneAssociation(model,rxnName,grRule,geneNameList,systNameList);
-%     end
-% end
+if (isfield(model,'genes'))
+    if (nargin < 11)
+        model = changeGeneAssociation(model,rxnName,grRule);
+    else
+        model = changeGeneAssociation(model,rxnName,grRule,geneNameList,systNameList);
+    end
+end
 
 % Figure out if the new reaction already exists
 rxnInModel=false;
