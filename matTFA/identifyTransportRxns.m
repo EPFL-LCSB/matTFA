@@ -1,14 +1,8 @@
-function [AllTransports, TransportNoCouples, CoupledTransports, ImportantTransports, directions, TransportGroups] = identifyTransportRxns(model)
+function [AllTransports, TransportNoCouples, CoupledTransports, ImportantTransports, directions, TransportGroups] = identifyTransportRxns(model,biomassRxnNames,ATPsynth_RxnNames)
 
 % this function identifies all the transport reactions in a model and sorts
 % them according to compartments
 % Milenko Tokic 02.11.2015
-
-% ATTENTION!!! We should indentify ATP synthase reaction for each model
-
-warning('Check the name of ATP synthase reaction! You might want to exclude it. Also identify biomass reaction!')
-
-pause(3)
 
 % INPUT:
 %   - cobra frendly model, metabolites should be stored in a field model.mets
@@ -33,12 +27,14 @@ pause(3)
 %     info
 
 % remove biomass reaction, this is not a transport and we dont want to keep
-% it couse it will create a mess
+% it becouse it will create a mess
 
-indexBiomass = find(~cellfun(@isempty, regexp(model.rxns, 'biomass')));
-if isempty(indexBiomass)==0;
-    model.rxns(indexBiomass) = [];
-    model.S(:,indexBiomass) = [];
+for i = 1:length(biomassRxnNames)
+    indexBiomass = find(~cellfun(@isempty, regexp(model.rxns, biomassRxnNames{i})));
+    if isempty(indexBiomass)==0
+        model.rxns(indexBiomass) = [];
+        model.S(:,indexBiomass) = [];
+    end
 end
 %%
 % first we remove compartment information
@@ -49,7 +45,7 @@ metsNoComp = cellfun(@(x)(x(1:end-2)), model.mets, 'uni', false);
 % first we want to identify nonzero elements in a reaction
 
 NonZero = {};
-for i = 1:length(model.rxns);
+for i = 1:length(model.rxns)
     INDEX = find(model.S(:,(i)));
     NonZero{i} = INDEX;
 end
@@ -57,7 +53,7 @@ end
 % put metabolite names instead of indeces
 
 MetsInRxns = {};
-for i = 1:length(NonZero);
+for i = 1:length(NonZero)
     indentifier = NonZero{i};
     MetsInRxns{i} = metsNoComp(indentifier);
 end
@@ -65,7 +61,7 @@ end
 
 % find unique values in a MetsInRxns
 Unique = {};
-for i = 1:length(MetsInRxns);
+for i = 1:length(MetsInRxns)
     Unique{i} = unique(MetsInRxns{:,i},'stable');
 end
 %%
@@ -79,14 +75,14 @@ metsComp = cellfun(@(x)(x(end)),model.mets, 'uni', false);
 
 % now we want to put compartment info in a reaction
 MetsCompInRxns = {};
-for i = 1:length(NonZero);
+for i = 1:length(NonZero)
     indentifier = NonZero{i};
     MetsCompInRxns{i} = metsComp(indentifier);
 end
 
 % find unique values in a MetsCompInRxns
 UniqueComp={};
-for i = 1:length(MetsInRxns);
+for i = 1:length(MetsInRxns)
     UniqueComp{i} = unique( MetsCompInRxns{:,i});
 end
 
@@ -96,8 +92,8 @@ end
 % transported
 
 Transport_reactions = [];
-for i = 1:length(MetsInRxns);
-    if size(MetsInRxns{i},1)==size(Unique{i},1);
+for i = 1:length(MetsInRxns)
+    if size(MetsInRxns{i},1)==size(Unique{i},1)
         % Reaction is not a transport, we store 0
         Transport_reactions(i) = 0;
     else
@@ -114,18 +110,19 @@ AllTransports = model.rxns(IndexTransport);
 compInfo = UniqueComp(find(Transport_reactions));
 compInfo = compInfo';
 %%
-% Exclute ATP synthase from the transports. Please check what is the name
-% of the reaction in your model.
-% The name ATPS4rpp is for Pseudomonas and Ecoli Model
+% Exclute ATP synthase from the transports.
 
-indexATPS = find(~cellfun(@isempty, regexp(AllTransports, 'ATPS4m')));
-AllTransports(indexATPS,:) = [];
-compInfo(indexATPS,:) = [];
+for i = 1:length(ATPsynth_RxnNames)
+    indexATPS = find(~cellfun(@isempty, regexp(AllTransports, ATPsynth_RxnNames{i})));
+    AllTransports(indexATPS,:) = [];
+    IndexTransport(indexATPS,:) = [];
+    compInfo(indexATPS,:) = [];
+end
 
 
 % merge compartment data
 
-for i=1:length(compInfo);
+for i=1:length(compInfo)
     compInfo{i,1} = compInfo{i,1}';
     compInfo{i,1} = strjoinTGL(compInfo{i,1});
     compInfo{i,1} = strrep(compInfo{i,1},' ','');
@@ -136,7 +133,7 @@ end
 % this reaction will apear in the cpe group because of the h, so the info
 % for h will be removed
 
-for i=1:length(compInfo);
+for i=1:length(compInfo)
     MultiComp(i) = length(cell2str(compInfo(i)));
     IndexToChangeA = find(MultiComp>2);
 end
@@ -144,37 +141,37 @@ end
 % this part will be executed only if there is such a case (three
 % compartments)
 
-if isempty(IndexToChangeA)==0;
+if isempty(IndexToChangeA)==0
     TransportToChange = AllTransports(IndexToChangeA);
     
-    for i = 1:length(TransportToChange);
+    for i = 1:length(TransportToChange)
         [~,IndexToChange(i)] = ismember(TransportToChange(i),model.rxns);
     end
     
     % identify unique metabolite for these reactions and store its
     % compartment
     
-    for i = 1:length(IndexToChange);
+    for i = 1:length(IndexToChange)
         
         IDStriple{i} = find(model.S(:,IndexToChange(i)) < 0);
         IDPtriple{i} = find(model.S(:,IndexToChange(i)) > 0);
         
     end
     
-    for i = 1:length(IDStriple);
+    for i = 1:length(IDStriple)
         SubTriple{:,i}  = metsNoComp(IDStriple{:,i});
         ProdTriple{:,i} = metsNoComp(IDPtriple{:,i});
     end
     
-    for i=1:length(SubTriple);
+    for i=1:length(SubTriple)
         TranspotedMetabolitetriple{i} = intersect(SubTriple{:,i},ProdTriple{:,i});
     end
     
     % delete hydrogen from these and now find original compartment
     
-    for i = 1:length(TranspotedMetabolitetriple);
+    for i = 1:length(TranspotedMetabolitetriple)
         [m(i) d(i)] = size(TranspotedMetabolitetriple{:,i});
-        if m(i)>1;
+        if m(i)>1
             TranspotedMetabolitetriple{:,i} = setdiff(TranspotedMetabolitetriple{:,i},'h');
         else
             TranspotedMetabolitetriple{:,i} = TranspotedMetabolitetriple{:,i};
@@ -183,30 +180,30 @@ if isempty(IndexToChangeA)==0;
     
     % restore the original compartment
     
-    for i=1:length(IDStriple);
+    for i=1:length(IDStriple)
         SubTripleReal{:,i} = model.mets(IDStriple{:,i});
         ProdTripleReal{:,i} = model.mets(IDPtriple{:,i});
         participatnts{i} = union(SubTripleReal{:,i},ProdTripleReal{:,i});
     end
     
-    for i = 1:length(TranspotedMetabolitetriple);
+    for i = 1:length(TranspotedMetabolitetriple)
         indexMetsToChange{i} = find(~cellfun(@isempty, regexp(participatnts{i}, TranspotedMetabolitetriple{i})));
     end
     
-    for i = 1:length(participatnts);
+    for i = 1:length(participatnts)
         N = participatnts{i};
-        for j = indexMetsToChange{i};
+        for j = indexMetsToChange{i}
             UniqueParticipants{i} = N(j);
         end
     end
     
-    for i = 1:length(UniqueParticipants);
+    for i = 1:length(UniqueParticipants)
         CorComInfo{i} = cellfun(@(x)(x(end)),UniqueParticipants{i}, 'uni', false);
     end
     
     % put everything in one cell
     
-    for i = 1:size((CorComInfo),2);
+    for i = 1:size((CorComInfo),2)
         CorComInfo1 = (CorComInfo{:,i});
         Mergecells{i,1} = strjoinTGL(CorComInfo1');
         compInfoToChange{i,1} = strrep(Mergecells{i,1},' ','');
@@ -214,7 +211,7 @@ if isempty(IndexToChangeA)==0;
     
     % find Indexes in compInfo to be changed
     
-    for i = 1:length(compInfoToChange);
+    for i = 1:length(compInfoToChange)
         compInfo{IndexToChangeA(i)} = compInfoToChange{i};
     end
 end
@@ -227,7 +224,7 @@ end
 % find indexes of transport reactions
 
 
-for i = 1:length(IndexTransport);
+for i = 1:length(IndexTransport)
     
     IDS{i} = find(model.S(:,IndexTransport(i)) < 0);
     IDP{i} = find(model.S(:,IndexTransport(i)) > 0);
@@ -236,21 +233,21 @@ end
 
 % put metabolite names instead of indeces
 
-for i = 1:length(IDS);
+for i = 1:length(IDS)
     Sub{:,i}  = metsNoComp(IDS{:,i});
     Prod{:,i} = metsNoComp(IDP{:,i});
 end
 
-for i=1:length(Sub);
+for i=1:length(Sub)
     TranspotedMetabolite{i} = intersect(Sub{:,i},Prod{:,i});
 end
 
 % if there is more than two elements in the cell that means that at least
 % one is h and it should be removed, also empty cells
 
-for i = 1:length(TranspotedMetabolite);
+for i = 1:length(TranspotedMetabolite)
     [m(i) d(i)] = size(TranspotedMetabolite{:,i});
-    if m(i)>1;
+    if m(i)>1
         TranspotedMetabolite1{:,i} = setdiff(TranspotedMetabolite{:,i},'h');
     else
         TranspotedMetabolite1{:,i} = TranspotedMetabolite{:,i};
@@ -259,10 +256,10 @@ end
 
 % second itteration, removing na1
 
-for i = 1:length(TranspotedMetabolite1);
+for i = 1:length(TranspotedMetabolite1)
     [m(i) d(i)] = size(TranspotedMetabolite1{:,i});
     
-    if m(i)>1;
+    if m(i)>1
         TranspotedMetabolite2{:,i} = setdiff(TranspotedMetabolite1{:,i},'na1');
     else
         TranspotedMetabolite2{:,i} = TranspotedMetabolite1{:,i};
@@ -271,10 +268,10 @@ end
 
 % third itteration, removing pi
 
-for i = 1:length(TranspotedMetabolite2);
+for i = 1:length(TranspotedMetabolite2)
     [m(i) d(i)] = size(TranspotedMetabolite2{:,i});
     
-    if m(i)>1;
+    if m(i)>1
         TranspotedMetaboliteUnique{:,i} = setdiff(TranspotedMetabolite2{:,i},'pi');
     else
         TranspotedMetaboliteUnique{:,i} = TranspotedMetabolite2{:,i};
@@ -308,7 +305,7 @@ AllTransports = [AllTransports Transports_Formulas TranspotedMetaboliteUnique co
 
 Metab1 = AllTransports(:,3);
 
-for i = 1:length(Metab1);
+for i = 1:length(Metab1)
     A(i) = size((Metab1{i}),1);
 end
 IdentifyAntiports = find(A>1)';
@@ -317,7 +314,7 @@ TransportNoCouples = AllTransports;
 TransportNoCouples(IdentifyAntiports,:) = [];
 
 Metab2 = TransportNoCouples(:,3);
-for i = 1:length(Metab2);
+for i = 1:length(Metab2)
     MetabMat{i} = cell2mat(Metab2{i});
 end
 TransportNoCouples(:,3) = MetabMat';
@@ -326,21 +323,21 @@ CoupledTransports = AllTransports(IdentifyAntiports,:);
 
 %% Grouping by compartments
 
-if isfield(model,'metCompSymbol')==1;
+if isfield(model,'metCompSymbol')==1
     transportGroups = unique(model.metCompSymbol');
 else
     transportGroups = unique(metsComp);
 end
 
 transportGroups = combntns(transportGroups,2);
-for i = 1:length(transportGroups);
+for i = 1:length(transportGroups)
     transportGroupsJoined{i,1} = strcat(transportGroups{i,1}, transportGroups{i,2});
 end
 
-for i = 1:length(AllTransports);
-    for j = 1:length(transportGroupsJoined);
+for i = 1:length(AllTransports)
+    for j = 1:length(transportGroupsJoined)
         Index = strncmp(AllTransports{i, 4}, transportGroupsJoined{j}, 3);
-        if Index==1;
+        if Index==1
             BIM{i, j} = AllTransports{i, :};
         else
             BIM{i, j} = [];
@@ -353,14 +350,14 @@ end
 
 Names = transportGroupsJoined;
 
-for i = 1 : size(BIM(1,:),2);
+for i = 1 : size(BIM(1,:),2)
     eval(['A',num2str(i),' = BIM(:, i);']);
     eval(['BIMS.A',num2str(i),' = A',num2str(i),'(~cellfun(@isempty,A',num2str(i),'));']);
 end
 
 % put names of compartments instead the generic once
 
-for i = 1:length(Names);
+for i = 1:length(Names)
     eval(['TransportGroups.' ,Names{i} ,' =BIMS.A',num2str(i),';']);
 end
 
@@ -371,7 +368,7 @@ end
 
 Futile = {};
 CompBim = unique(TransportNoCouples(:, 4));
-for i = 1: length(CompBim);
+for i = 1: length(CompBim)
     A = ismember(TransportNoCouples(:,4), CompBim{i});
     B = find(A==1);
     C = TransportNoCouples([B],[1,3,4]);
@@ -380,7 +377,7 @@ for i = 1: length(CompBim);
     ListCompartments = C(:,3);
     
     ListMetabolitesUnique = unique(ListMetabolites);
-    if size(ListMetabolitesUnique,1) == size(ListMetabolites,1);
+    if size(ListMetabolitesUnique,1) == size(ListMetabolites,1)
         Futile{i} = {};
     else
         [position] = findDoubles(ListMetabolites);
@@ -392,7 +389,7 @@ for i = 1: length(CompBim);
 end
 ImportantTransportsTemp = {};
 
-for i=1:length(Futile);
+for i=1:length(Futile)
     eval(['importantTransports',num2str(i),' = Futile{:, i};']);
     CurTime = eval(horzcat('importantTransports', num2str(i)));
     ImportantTransportsTemp = [ImportantTransportsTemp; CurTime];
@@ -411,13 +408,13 @@ ImportantTransports = sortrows(ImportantTransportsTemp);
 % If the numbers are -1 and 1 that means that they do not operate in the same direction.
 % in this case 1 means that the direction is E -> P -> C, and -1 opposite.
 
-for i = 1:size(ImportantTransports(:,1),1);
+for i = 1:size(ImportantTransports(:,1),1)
     [~, IndexToChange(i)] = ismember(ImportantTransports(i,1),model.rxns);
 end
 IndexToChange = IndexToChange';
 directions = [];
 A = full(model.S);
-for i= 1:length(IndexToChange);
+for i= 1:length(IndexToChange)
     participants{i} = find(A(:, IndexToChange(i)));
     Indexes = A(participants{i}, IndexToChange(i));
     Mets = model.mets(find(A(:, IndexToChange(i))));
@@ -432,7 +429,7 @@ for i= 1:length(IndexToChange);
     metsNoComp = strjoinTGL(metsNoComp);
     metsNoComp = strrep(metsNoComp,' ','');
     
-    if  isequal(metsNoComp,ImportantTransports{i,3})==0;
+    if  isequal(metsNoComp,ImportantTransports{i,3})==0
         directions(i) = 1;
     else
         directions(i) = -1;
