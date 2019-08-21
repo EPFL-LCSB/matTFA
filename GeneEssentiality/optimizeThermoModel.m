@@ -10,7 +10,7 @@ if (nargin < 3)
     solver = 'cplex'; %not implemented yet
 end
 if (nargin < 4)
-    time = 60;
+    time = 120;
 end
 if (nargin < 5) && (minNorm==1)
     FRidx = getAllVar(tModel,{'F','R'});
