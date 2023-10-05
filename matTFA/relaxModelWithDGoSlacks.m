@@ -86,7 +86,7 @@ if isempty(solTFA.x) || solTFA.val<minObjSolVal
     
     idOfObjective = find(modelwDGoSlackVars.f == 1);
     
-    if ~issame(size(idOfObjective),[1 1])
+    if ~isequal(size(idOfObjective),[1 1])
         warning('Attention: The model has multiple objective functions assigned, i.e:')
         modelwDGoSlackVars.varNames(idOfObjective)
         error('Please select only one!!')
