@@ -8,8 +8,8 @@ You will need to have `Git-LFS <https://git-lfs.github.com/>`_ in order to prope
 
 .. code:: bash
 
-    git clone https://github.com/EPFL-LCSB/pytfa.git /path/to/pytfa
-    cd /path/to/pytfa
+    git clone https://github.com/EPFL-LCSB/matTFA.git /path/to/matTFA
+    cd /path/to/matTFA
     git lfs install
     git lfs pull
 
