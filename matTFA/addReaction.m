@@ -239,6 +239,16 @@ for i = 1:length(metaboliteList)
         if isfield(model,'metCharge')
             model.metCharge(end+1,1) = 0;
         end
+        if isfield(model,'metCharge')
+            model.metCharge(end+1,1) = 0;
+        end
+        if isfield(model,'metSEEDID')
+            model.metSEEDID{end+1,1} = 'NA';
+        end
+        if isfield(model,'metCompSymbol')
+            model.metCompSymbol{end+1,1} = '';
+        end
+
     end
 end
 
