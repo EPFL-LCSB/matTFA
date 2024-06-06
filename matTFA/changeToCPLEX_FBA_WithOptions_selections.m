@@ -18,7 +18,6 @@ function mergedOptions = mergeOptionsWithDefaults(options)
         'scalPar', -1, ...
         'feasTol', 1e-9, ...
         'emphPar', 1, ...
-        'scalPar', 0, ...
         'TimeInSec', 3600);
     
     mergedOptions = defaultOptions;
@@ -48,7 +47,7 @@ function cplex = setupModelProperties(model)
     cplex = Cplex(model.description);
 
     % Set the model name
-    cplex.Model.name = string(model.modelID);
+    cplex.Model.name = string(model.description);
 
     % Set the optimization direction (maximize or minimize)
     if ~isfield(model, 'osense')
