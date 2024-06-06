@@ -1,6 +1,6 @@
 function [model, drains, MinMets, cDPs] = analysisIMM_save(model, ...
     flagUpt, minObj, maxObj, NumAlt, drainsForiMM, rxnNoThermo, ...
-    ReactionDB, metabData, save_path)
+    ReactionDB, metabData, save_path, biomassRxn)
 
 % Save original version of the model 
 model_original = model;
@@ -24,7 +24,7 @@ model.var_ub(model.f == 1) = maxObj;
 model.objtype = -1; % maximize
 
 % Check for feasibility
-sol = solveTFAmodelCplex_selections(model);
+sol = solveTFAmodel_selections(model);
 if sol.val < minObj
     error("growth lower bound constraint not imposed well")
 end
@@ -36,7 +36,7 @@ model.f = zeros(length(model.varNames), 1);
    
 % Get alternative solutions
 MinMets = cell(NumAlt, 1);
-[cDPs, model, indUSE] = findDPMinMets_informationalCallback(model, model_original, NumAlt, [],30*60, drains,minObj,save_path); 
+[cDPs, model, indUSE] = findDPMinMets_informationalCallback(model, model_original, NumAlt, [],30*60, drains, minObj,save_path, biomassRxn); 
 if isempty(cDPs), disp('no solution found'); return; end
 
 save('./workspaces/iMM_over.mat')

@@ -1,4 +1,4 @@
-function [DPs, model, indUSE] = findDPMinMets_informationalCallback(model, model_original, NumAlt, intTag, time, drains, mu_lb, save_path)
+function [DPs, model, indUSE] = findDPMinMets_informationalCallback(model, model_original, NumAlt, intTag, time, drains, mu_lb, save_path, biomassRxn)
 % Get alternative solutions for MILP (maximization)
 %
 % USAGE:
@@ -28,7 +28,7 @@ if nargin < 4, time = []; end
 indUSE = getAllVar(model, {intTag});
 [~,indDrainsR] = ismember(drains(:,1),model.varNames);
 NumSols = 0;
-sol = solveTFAmodelCplex_selections(model);
+sol = solveTFAmodel_selections(model);
 stop_search = sol.val;
 DPs = [];
 objectives = [];
@@ -47,7 +47,7 @@ while (NumSols < NumAlt) && ~isempty(sol.x) && (sol.val ~= 0)
 
     model = addIntegerCutConstraint(model, actUSEvec, 0.5);
 
-    sol = solveTFAmodelCplex_selections(model,'TimeInSec',time,'timePolishing',time*3/4,'stop_search_value',stop_search);
+    sol = solveTFAmodel_selections(model,'TimeInSec',time,'timePolishing',time*3/4,'stop_search_value',stop_search);
     
     if isempty(sol.x) || (sol.val == 0), break; end
     fprintf('Number of DPs:\t%d\n', NumSols);
@@ -72,13 +72,13 @@ while (NumSols < NumAlt) && ~isempty(sol.x) && (sol.val ~= 0)
         end
 
         % Sanity check 3 to ensure the model can grow on the medium
-        model_test = set_objective(model_original,{'Biomass_rxn_c'},1,'max',1);
+        model_test = set_objective(model_original,{biomassRxn},1,'max',1);
         [~,indDrainsR2open] = ismember(strrep(model.varNames(actUSEvec),'BFUSE_',''),model.varNames);
         indDrainsR2close = setdiff(indDrainsR,indDrainsR2open);
         model_test.var_lb(indDrainsR2close) = 0;
         model_test.var_ub(indDrainsR2close) = 0;
         
-        sol_test =  solveTFAmodelCplex_selections(model_test);
+        sol_test =  solveTFAmodel_selections(model_test);
 
         if isempty(sol_test.val) || sol_test.val < 0.99*mu_lb
             error('iMM not working')

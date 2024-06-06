@@ -12,22 +12,22 @@ function [solFBA, solTFA] = solveAndCheckGrowthFBAandTFAmodel(model,biomass_spec
     end
 
     % Solve FBA model
-    solFBA = solveFBAmodelCplex(model);
+    solFBA = solveFBAmodel_selections(model);
 
     % Solve TFA model
     if flagTFA
-        solTFA = solveTFAmodelCplex_selections(model,'TimeInSec',2*60,'emphPar',0);
+        solTFA = solveTFAmodel_selections(model,'TimeInSec',2*60,'emphPar',0);
     end
 
     % Check if the solution is valid
     if isnan(solFBA.f) || isempty(solFBA.f) || solFBA.f < 1e-9
-        error('Model not growing');
+        warning('Model not growing');
     end
 
     % Check if the thermo solution is valid
     if flagTFA
-        if isnan(solTFA.val) || isempty(solTFA.val) || solTFA.val < 1e-9
-            error('thermo Model not growing');
+        if isempty(solTFA.val) || isnan(solTFA.val) || solTFA.val < 1e-9
+            warning('thermo Model not growing');
         end
     end
 

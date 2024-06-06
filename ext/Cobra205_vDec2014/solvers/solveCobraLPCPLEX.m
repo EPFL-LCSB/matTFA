@@ -508,7 +508,7 @@ end
 %timeTaken=toc;
 timeTaken=NaN;
 
-if Inform~=1 && ~isempty(which('cplex'))
+if isempty(Inform) || Inform~=1 && ~isempty(which('cplex'))
     if conflictResolve ==1
         if isfield(LPProblem,'mets') && isfield(LPProblem,'rxns')
             %this code reads the conflict resolution file and replaces the
@@ -585,10 +585,12 @@ else
             %this is a conservative view
             solution.stat = -1;
             %use tomlab code to print out exit meassage
-            [ExitText,ExitFlag] = cplexStatus(Inform);
-            solution.ExitText=ExitText;
-            solution.ExitFlag=ExitFlag;
-            fprintf('\n%s%g\n',[ExitText ', Objective '],  c'*solution.full*osense);
+            % [ExitText,ExitFlag] = cplexStatus(Inform);
+            ExitText = 'EXIT';
+            ExitFlag = 1;
+            solution.ExitText= ExitText;%ExitText;
+            solution.ExitFlag= ExitFlag;%ExitFlag;
+            fprintf('\n%s%g\n',[ExitText ', Objective ']); %,  c'*solution.full*osense);
         end
     end
 end

@@ -136,6 +136,7 @@ if debug_function
     end
   end
 end
+
 %Add the unique compartments to the model struct.
 the_compartments = unique(the_compartments);
 for (i=1:size(the_compartments,2))

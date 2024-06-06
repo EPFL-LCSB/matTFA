@@ -1,5 +1,5 @@
-function sol = solveTFAmodelCplex_selections(tModel, varargin)
-% SOLVETFAMODELCPLEX_V3 Solves a TFA model using specific solver settings
+function sol = solveTFAmodel_selections(tModel, varargin)
+% SOLVETFAMODEL_SELECTIONS Solves a TFA model using specific solver settings
 %
 %   sol = solveTFAmodelCplex_v3(tModel, Name, Value)
 %
@@ -17,12 +17,12 @@ function sol = solveTFAmodelCplex_selections(tModel, varargin)
 %   'timePolishing'      - time for polishing
 %   'stop_search_value'  - stop search value
 %
-%   Note: Make sure the cplex object is saved as a .mst file
 %
 % Output:
 %   sol                 - solution of the TFA model
-%
-% More details in changeToCPLEX_WithOptions
+
+
+%% Initialization
 
 global TFA_MILP_SOLVER
 
@@ -58,7 +58,9 @@ switch solver
 end
 end
 
-% Private function for CPLEX solve
+
+%% Private functions for CPLEX solve
+
 function sol = x_solveCplex(tModel, options)
 
 if isempty(which('cplex.m'))
@@ -79,9 +81,6 @@ end
 try
     cplex.solve();
     if options.writeMIPstart
-        if isstring(options.writeMIPpath)
-            options.writeMIPpath = char(options.writeMIPpath);
-        end
         cplex.writeMipStart(options.writeMIPpath);
     end
     sol = parseCplexSolution(cplex);
@@ -108,85 +107,6 @@ function stop = stop_function(info, data)
     end
 end
 
-% Private function for GUROBI solve
-function sol = x_solveGurobi(tModel, options)
-
-gmodel = prepareGurobiModel(tModel);
-
-params = prepareGurobiParams(options);
-
-try
-    result = gurobi(gmodel, params);
-    sol = parseGurobiSolution(result);
-catch
-    sol.x = NaN;
-    sol.val = NaN;
-    sol.status = 'Solver crashed';
-end
-
-end
-
-
-function gmodel = prepareGurobiModel(tModel)
-    num_constr = length(tModel.constraintType);
-    num_vars = length(tModel.vartypes);
-
-    contypes = '';
-    vtypes = '';
-
-    % convert contypes and vtypes into the right format
-    for i=1:num_constr
-        contypes = strcat(contypes, tModel.constraintType{i,1});
-    end
-
-    for i=1:num_vars
-        vtypes = strcat(vtypes, tModel.vartypes{i,1});
-    end
-
-    gmodel.A = tModel.A;
-    gmodel.obj = tModel.f;
-    gmodel.lb = tModel.var_lb;
-    gmodel.ub = tModel.var_ub;
-    gmodel.rhs = tModel.rhs;
-    gmodel.sense = contypes;
-    gmodel.vtype = vtypes;
-
-    gmodel.varnames = tModel.varNames;
-
-    if tModel.objtype == -1
-        gmodel.modelsense = 'max';
-    elseif tModel.objtype == 1
-        gmodel.modelsense = 'min';
-    else
-        error(['No objective type specified ' ...
-            '(model.objtype should be in {-1,1})']);
-    end
-end
-
-function params = prepareGurobiParams(options)
-    params = struct();
-    if ~isempty(options.TimeInSec)
-        params.TimeLimit = options.TimeInSec;
-    end
-    if ~isempty(options.manualScalingFactor)
-        params.ScaleFlag = options.manualScalingFactor;
-    end
-    if ~isempty(options.mipTolInt)
-        params.MIPGap = options.mipTolInt;
-    end
-    if ~isempty(options.emphPar)
-        params.MIPFocus = options.emphPar;
-    end
-    if ~isempty(options.feasTol)
-        params.FeasibilityTol = options.feasTol;
-    end
-    if ~isempty(options.scalPar)
-        params.ScaleFlag = options.scalPar;
-    end
-    if ~isempty(options.mipDisplay)
-        params.DisplayInterval = options.mipDisplay;
-    end
-end
 
 function sol = parseCplexSolution(cplex)
     if isfield(cplex.Solution,'x')
@@ -194,37 +114,74 @@ function sol = parseCplexSolution(cplex)
         if ~isempty(x)
             sol.x = cplex.Solution.x;
             sol.val = cplex.Solution.objval;
-            sol.cplexSolStatus = cplex.Solution.status;
+            sol.SolStatus = cplex.Solution.status;
         else
             sol.x = [];
             sol.val = [];
             disp('Empty solution');
             warning('Cplex returned an empty solution!')
-            sol.cplexSolStatus = 'Empty solution';
+            sol.SolStatus = 'Empty solution';
         end
     else
         sol.x = [];
         sol.val = [];
         disp('No field cplex.Solution.x');
         warning('The solver does not return a solution!')
-        sol.cplexSolStatus = 'No field cplex.Solution.x';
+        sol.SolStatus = 'No field cplex.Solution.x';
     end
 end
 
-function sol = parseGurobiSolution(result)
-    if isfield(result,'x')
-        x = result.x;
-        x(abs(x) < 1E-9) = 0;
+%% Private functions for GUROBI solve
+function sol = x_solveGurobi(tModel, options)
+
+if isempty(which('gurobi'))
+    error('gurobi is either not installed or not in the path')
+end
+
+[gurobiModel, gurobiParams] = changeToGurobi_WithOptions_selections(tModel, options);
+
+
+% if options.loadMIPstart == 1
+%     gurobiModel.Start = readMIPStart(options.loadMIPpath, gurobiModel);
+% end
+
+try
+    results = gurobi(gurobiModel, gurobiParams);
+%     if options.writeMIPstart
+%         writeMIPStart(result, options.writeMIPpath);
+%     end
+    sol = parseGurobiSolution(results);
+
+catch
+    sol.x = NaN;
+    sol.val = NaN;
+    sol.SolStatus = 'Solver crashed';
+end
+
+
+end
+
+
+
+function sol = parseGurobiSolution(results)
+    if isfield(results,'x')
+        x = results.x;
+        if ~isempty(x)
+            sol.x = results.x;
+            sol.val = results.objval;
+            sol.SolStatus = lower(results.status);
+        else
+            sol.x = [];
+            sol.val = [];
+            disp('Empty solution');
+            warning('Gurobi returned an empty solution!')
+            sol.SolStatus = 'Empty solution';
+        end
     else
-        warning('The solver does not return a solution!');
-        result.x = [];
-        result.objval = [];
+        sol.x = [];
+        sol.val = [];
+        disp('No field results.Solution.x');
+        warning('The solver does not return a solution!')
+        sol.SolStatus = 'No field results.x';
     end
-
-    sol.x = result.x;
-    sol.val = result.objval;
-    sol.status = result.status;
-    % TODO: Add exitflag translation
 end
-
-

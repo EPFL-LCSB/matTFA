@@ -1,4 +1,4 @@
-function TMinMax = runTMinMax_save(model, variables, TimeInSec, save_path)
+function TMinMax = runTMinMax_save_selections(model, variables, TimeInSec, save_path)
 
 if nargin < 3 || ~exist('TimeInSec','var')
     TimeInSec = 3*60;
@@ -32,14 +32,17 @@ for j = k:length(varList)
 
     model.objtype = 1;
     fprintf('Minimizing %s\n',model.varNames{i});        
-    sol_min = solveTFAmodelCplex_selections(model,'TimeInSec',TimeInSec,'emphPar',1,'mipDisplay',0,'barrierDisplay',0,'CPXPARAMdisp',0);
+    sol_min = solveTFAmodel_selections(model,'TimeInSec',TimeInSec,'emphPar',1,'mipDisplay',5,'barrierDisplay',0,'CPXPARAMdisp',0);
                                                   
     if isempty(sol_min.val)
-        sol_min = solveTFAmodelCplex_selections(model,'TimeInSec',TimeInSec,'emphPar',0,'mipDisplay',0,'barrierDisplay',0,'CPXPARAMdisp',0);
+        sol_min = solveTFAmodel_selections(model,'TimeInSec',TimeInSec,'emphPar',0,'mipDisplay',5,'barrierDisplay',0,'CPXPARAMdisp',0);
         if isempty(sol_min.val)
             model.c = zeros(size(model.c));
             model.c(j) = 1;
-            sol_min_FBA = solveFBAmodelCplex(model,[],[],[],'min');
+            original_osense = model.osense; 
+            model.osense = 1;
+            sol_min_FBA = solveFBAmodel_selections(model);
+            model.cense = original_osense;      
             TMinMax_LB(j) = sol_min_FBA.f; 
         else
             TMinMax_LB(j) = sol_min.val; 
@@ -54,15 +57,18 @@ for j = k:length(varList)
 
     model.objtype = -1;
     fprintf('Maximizing %s\n',model.varNames{i});        
-    sol_max = solveTFAmodelCplex_selections(model,'TimeInSec',TimeInSec,'emphPar',1,'mipDisplay',0,'barrierDisplay',0,'CPXPARAMdisp',0);
+    sol_max = solveTFAmodelCplex_selections(model,'TimeInSec',TimeInSec,'emphPar',1,'mipDisplay',5,'barrierDisplay',0,'CPXPARAMdisp',0);
 
     if isempty(sol_max.val)
-        sol_max = solveTFAmodelCplex_selections(model,'TimeInSec',TimeInSec,'emphPar',0,'mipDisplay',0,'barrierDisplay',0,'CPXPARAMdisp',0);
+        sol_max = solveTFAmodelCplex_selections(model,'TimeInSec',TimeInSec,'emphPar',0,'mipDisplay',5,'barrierDisplay',0,'CPXPARAMdisp',0);
         if isempty(sol_max.val)
             %TMinMax_UB(j) = NaN;
             model.c = zeros(size(model.c));
             model.c(j) = 1;
+            original_osense = model.osense; 
+            model.osense = 1;            
             sol_max_FBA = solveFBAmodelCplex(model);
+            model.cense = original_osense;                  
             TMinMax_UB(j) = sol_max_FBA.f; 
         else
             TMinMax_UB(j) = sol_max.val; 

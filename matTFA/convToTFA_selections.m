@@ -561,7 +561,7 @@ for i = 1:num_rxns
     
 end
 
-% CONSISTENCY CHECKS
+%% CONSISTENCY CHECKS
 
 % creating the objective
 model.f = zeros(size(model.A,2),1);
@@ -637,7 +637,7 @@ model.objtype = -1; % 1 : minimize, -1 : maximize
 model.types = ReactionDB.vartypes;
 
 if strcmp(flagInfeasibility,'DGo')
-    [model, relaxedDGoVarsValues, modelwDGoSlackVars] = relaxModelWithDGoSlacks(model, minObjSolVal, rxnNameListNoDGoRelax);
+    [model, relaxedDGoVarsValues, modelwDGoSlackVars] = relaxModelWithDGoSlacks_selections(model, minObjSolVal, rxnNameListNoDGoRelax);
 elseif strcmp(flagInfeasibility,'NO')
     modelwDGoSlackVars = [];
     relaxedDGoVarsValues = [];

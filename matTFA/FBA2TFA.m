@@ -1,8 +1,12 @@
-function [model,relaxedDGoVarsValues] = FBA2TFA(model,DB,M,M_thermo,flagInfeasibility)
+function [model,relaxedDGoVarsValues] = FBA2TFA(model,DB,M,M_thermo,flagInfeasibility,minObjSolVal)
 
     if ~exist("flagInfeasibility","var") || isempty(flagInfeasibility)
         flagInfeasibility = [];
     end
+    if ~exist("minObjSolVal","var") || isempty(minObjSolVal)
+        minObjSolVal = [];
+    end
+
 
     %%%%%%%%%%%%%%%%%%%%%%%%
     % Prepare model for thermo 
@@ -17,7 +21,6 @@ function [model,relaxedDGoVarsValues] = FBA2TFA(model,DB,M,M_thermo,flagInfeasib
     % Convert the model to thermo
     rxnNameListNoThermo = [];
     rxnNameListNoDGoRelax = [];
-    minObjSolVal = [];
     flagToAddPotentials = false;
     flagToAddLnThermoDisp = false;
     verboseFlag = true;
